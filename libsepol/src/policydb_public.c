@@ -184,6 +184,12 @@ int sepol_policydb_write(sepol_policydb_t * p, sepol_policy_file_t * pf)
 	return policydb_write(&p->p, &pf->pf);
 }
 
+int sepol_policydb_write_sandbox(sepol_policydb_t *p, sepol_policy_file_t *pf,
+				 char *context, int mode)
+{
+	return policydb_write_sandbox(&p->p, &pf->pf, context, mode);
+}
+
 int sepol_policydb_from_image(sepol_handle_t * handle,
 			      void *data, size_t len, sepol_policydb_t * p)
 {

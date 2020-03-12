@@ -6328,6 +6328,15 @@ int __cil_build_ast_node_helper(struct cil_tree_node *parse_current, uint32_t *f
 	} else if (parse_current->data == CIL_KEY_NEVERALLOW) {
 		rc = cil_gen_avrule(parse_current, ast_node, CIL_AVRULE_NEVERALLOW);
 		*finished = CIL_TREE_SKIP_NEXT;
+	} else if (parse_current->data == CIL_KEY_SANDBOXDENY) {
+		if (!db->sandbox) {
+			cil_log(CIL_ERR, "Error: deny statements permitted only in sandbox\n");
+			rc = SEPOL_ERR;
+		} else {
+			rc = cil_gen_avrule(parse_current, ast_node,
+					    CIL_AVRULE_SANDBOXDENY);
+		}
+		*finished = CIL_TREE_SKIP_NEXT;
 	} else if (parse_current->data == CIL_KEY_ALLOWX) {
 		rc = cil_gen_avrulex(parse_current, ast_node, CIL_AVRULE_ALLOWED);
 		*finished = CIL_TREE_SKIP_NEXT;

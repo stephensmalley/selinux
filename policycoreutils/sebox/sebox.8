@@ -1,0 +1,50 @@
+.TH "sebox" "8" "01 Mar 2019" "Security Enhanced Linux" "SELinux command line documentation"
+.SH "NAME"
+sebox \- SELinux sandbox tool
+
+.SH "SYNOPSIS"
+.B sebox
+.I \-l FILE
+.br
+.B sebox
+.I \-u FILE
+.br
+.B sebox
+.I \-L
+
+.SH "DESCRIPTION"
+.sp
+This tool is used to load and unload sandbox policy files into a running SELinux system.
+.RS
+.SH "OPTIONS"
+.B \-l, --load=FILE
+.RS
+Load sandbox policy
+.RE
+.sp
+.B \-u, --unload=FILE
+.RS
+Unload sandbox policy
+.RE
+.sp
+.B \-L, --list
+.RS
+List sandbox policies
+.RE
+.sp
+.B \-v, --verbose
+.RS
+Verbose output
+.RE
+.sp
+.B \-h, --help
+.RS
+Help
+.RE
+.SH "AUTHOR"
+This man page was written by ......
+.br
+The program was written by .......
+
+.SH "SEE ALSO"
+.BR selinux "(8), " sestatus.conf "(5)

@@ -59,6 +59,7 @@ extern void cil_set_attrs_expand_generated(struct cil_db *db, int attrs_expand_g
 extern void cil_set_attrs_expand_size(struct cil_db *db, unsigned attrs_expand_size);
 extern void cil_set_target_platform(cil_db_t *db, int target_platform);
 extern void cil_set_policy_version(cil_db_t *db, int policy_version);
+extern void cil_set_sandbox(cil_db_t *db, int sandbox);
 extern void cil_write_policy_conf(FILE *out, struct cil_db *db);
 
 enum cil_log_level {

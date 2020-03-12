@@ -120,6 +120,17 @@ extern int sepol_policydb_read(sepol_policydb_t * p, sepol_policy_file_t * pf);
 extern int sepol_policydb_write(sepol_policydb_t * p, sepol_policy_file_t * pf);
 
 /*
+ * Write a policydb to a sandbox binary file.
+ * The generated image will be in the binary format desgined specifically
+ * for sandboxes.
+ */
+#define SEPOL_SANDBOX_ALLOW 0x00
+#define SEPOL_SANDBOX_DENY 0x01
+extern int sepol_policydb_write_sandbox(sepol_policydb_t *p,
+					sepol_policy_file_t *pf,
+					char *context, int mode);
+
+/*
  * Extract a policydb from a binary policy memory image.  
  * This is equivalent to sepol_policydb_read with a policy file
  * set to refer to memory.

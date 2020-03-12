@@ -238,6 +238,7 @@ char *CIL_KEY_UNORDERED;
 char *CIL_KEY_SRC_INFO;
 char *CIL_KEY_SRC_CIL;
 char *CIL_KEY_SRC_HLL;
+char *CIL_KEY_SANDBOXDENY;
 
 static void cil_init_keys(void)
 {
@@ -403,6 +404,7 @@ static void cil_init_keys(void)
 	CIL_KEY_SRC_INFO = cil_strpool_add("<src_info>");
 	CIL_KEY_SRC_CIL = cil_strpool_add("<src_cil>");
 	CIL_KEY_SRC_HLL = cil_strpool_add("<src_hll>");
+	CIL_KEY_SANDBOXDENY = cil_strpool_add("deny");
 }
 
 void cil_db_init(struct cil_db **db)
@@ -459,6 +461,7 @@ void cil_db_init(struct cil_db **db)
 	(*db)->mls = -1;
 	(*db)->target_platform = SEPOL_TARGET_SELINUX;
 	(*db)->policy_version = POLICYDB_VERSION_MAX;
+	(*db)->sandbox = 0;
 }
 
 void cil_db_destroy(struct cil_db **db)
@@ -1218,6 +1221,8 @@ const char * cil_node_to_string(struct cil_tree_node *node)
 			return CIL_KEY_DONTAUDIT;
 		case CIL_AVRULE_NEVERALLOW:
 			return CIL_KEY_NEVERALLOW;
+		case CIL_AVRULE_SANDBOXDENY:
+			return CIL_KEY_SANDBOXDENY;
 		default:
 			break;
 		}
@@ -1869,6 +1874,11 @@ void cil_set_target_platform(struct cil_db *db, int target_platform)
 void cil_set_policy_version(struct cil_db *db, int policy_version)
 {
 	db->policy_version = policy_version;
+}
+
+void cil_set_sandbox(struct cil_db *db, int sandbox)
+{
+	db->sandbox = sandbox;
 }
 
 void cil_symtab_array_init(symtab_t symtab[], int symtab_sizes[CIL_SYM_NUM])

@@ -10,3 +10,4 @@ setfiles/restorecon_xattr
 setfiles/setfiles
 setsebool/setsebool
 hll/pp/pp
+sebox/sebox

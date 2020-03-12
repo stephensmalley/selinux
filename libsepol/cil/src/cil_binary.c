@@ -1295,6 +1295,9 @@ int __cil_insert_avrule(policydb_t *pdb, uint32_t kind, uint32_t src, uint32_t t
 	case CIL_AVRULE_DONTAUDIT:
 		avtab_key.specified = AVTAB_AUDITDENY;
 		break;
+	case CIL_AVRULE_SANDBOXDENY:
+		avtab_key.specified = AVTAB_SANDBOXDENY;
+		break;
 	default:
 		rc = SEPOL_ERR;
 		goto exit;

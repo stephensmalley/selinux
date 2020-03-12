@@ -2332,3 +2332,98 @@ int policydb_write(policydb_t * p, struct policy_file *fp)
 
 	return POLICYDB_SUCCESS;
 }
+
+int policydb_write_sandbox(policydb_t *p, struct policy_file *fp,
+			   char *context, int mode)
+{
+	uint32_t buf[32], config;
+	size_t items, len;
+	struct policy_data pd;
+
+	if (p->unsupported_format)
+		return POLICYDB_UNSUPPORTED;
+
+	pd.fp = fp;
+	pd.p = p;
+
+	config = 0;
+	if (p->mls) {
+		if ((p->policyvers < POLICYDB_VERSION_MLS &&
+		    p->policy_type == POLICY_KERN) ||
+		    (p->policyvers < MOD_POLICYDB_VERSION_MLS &&
+		    p->policy_type == POLICY_BASE) ||
+		    (p->policyvers < MOD_POLICYDB_VERSION_MLS &&
+		    p->policy_type == POLICY_MOD)) {
+			ERR(fp->handle, "policy version %d cannot support MLS",
+			    p->policyvers);
+			return POLICYDB_ERROR;
+		}
+		config |= POLICYDB_CONFIG_MLS;
+	}
+
+	config |= (POLICYDB_CONFIG_UNKNOWN_MASK & p->handle_unknown);
+
+	/* Write the context length and context */
+	len = strlen(context);
+	buf[0] = cpu_to_le32(len);
+	items = put_entry(buf, sizeof(uint32_t), 1, fp);
+	if (items != 1)
+		return POLICYDB_ERROR;
+	items = put_entry(context, 1, len, fp);
+	if (items != len)
+		return POLICYDB_ERROR;
+
+	/* Write mode */
+	buf[0] = cpu_to_le32(mode);
+	items = put_entry(buf, sizeof(uint32_t), 1, fp);
+	if (items != 1)
+		return POLICYDB_ERROR;
+
+	/* Write out commons */
+	buf[0] = cpu_to_le32(p->symtab[SYM_COMMONS].nprim);
+	buf[1] = p->symtab[SYM_COMMONS].table->nel;
+	buf[1] = cpu_to_le32(buf[1]);
+	items = put_entry(buf, sizeof(uint32_t), 2, fp);
+	if (items != 2)
+		return POLICYDB_ERROR;
+	if (hashtab_map(p->symtab[SYM_COMMONS].table, write_f[SYM_COMMONS], &pd))
+		return POLICYDB_ERROR;
+
+	/* Write out classes */
+	buf[0] = cpu_to_le32(p->symtab[SYM_CLASSES].nprim);
+	buf[1] = p->symtab[SYM_CLASSES].table->nel;
+	buf[1] = cpu_to_le32(buf[1]);
+	items = put_entry(buf, sizeof(uint32_t), 2, fp);
+	if (items != 2)
+		return POLICYDB_ERROR;
+	if (hashtab_map(p->symtab[SYM_CLASSES].table, write_f[SYM_CLASSES], &pd))
+		return POLICYDB_ERROR;
+
+	/* Write out types */
+	buf[0] = cpu_to_le32(p->symtab[SYM_TYPES].nprim);
+	buf[1] = p->symtab[SYM_TYPES].table->nel;
+
+	/*
+	 * A special case when writing type/attribute symbol table.
+	 * The kernel policy version less than 24 does not support
+	 * to load entries of attribute, so we have to re-calculate
+	 * the actual number of types except for attributes.
+	 */
+	if (p->policyvers < POLICYDB_VERSION_BOUNDARY &&
+	    p->policy_type == POLICY_KERN) {
+		hashtab_map(p->symtab[SYM_TYPES].table,
+			    type_attr_uncount, &buf[1]);
+	}
+	buf[1] = cpu_to_le32(buf[1]);
+	items = put_entry(buf, sizeof(uint32_t), 2, fp);
+	if (items != 2)
+		return POLICYDB_ERROR;
+	if (hashtab_map(p->symtab[SYM_TYPES].table, write_f[SYM_TYPES], &pd))
+		return POLICYDB_ERROR;
+
+	/* Write out te rules */
+	if (avtab_write(p, &p->te_avtab, fp))
+		return POLICYDB_ERROR;
+
+	return POLICYDB_SUCCESS;
+}

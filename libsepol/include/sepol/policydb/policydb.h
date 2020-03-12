@@ -272,7 +272,10 @@ typedef struct avrule {
 #define AVRULE_AUDITDENY		AVTAB_AUDITDENY
 #define AVRULE_DONTAUDIT		0x0008
 #define AVRULE_NEVERALLOW		AVTAB_NEVERALLOW
-#define AVRULE_AV         (AVRULE_ALLOWED | AVRULE_AUDITALLOW | AVRULE_AUDITDENY | AVRULE_DONTAUDIT | AVRULE_NEVERALLOW)
+#define AVRULE_SANDBOXDENY              AVTAB_SANDBOXDENY
+#define AVRULE_AV			(AVRULE_ALLOWED | AVRULE_AUDITALLOW | \
+					 AVRULE_AUDITDENY | AVRULE_DONTAUDIT | \
+					 AVRULE_NEVERALLOW | AVRULE_SANDBOXDENY)
 #define AVRULE_TRANSITION		AVTAB_TRANSITION
 #define AVRULE_MEMBER			AVTAB_MEMBER
 #define AVRULE_CHANGE			AVTAB_CHANGE
@@ -723,6 +726,9 @@ extern int avrule_read_list(policydb_t * p, avrule_t ** avrules,
 			    struct policy_file *fp);
 
 extern int policydb_write(struct policydb *p, struct policy_file *pf);
+extern int policydb_write_sandbox(struct policydb *p,
+				  struct policy_file *pf,
+				  char *context, int mode);
 extern int policydb_set_target_platform(policydb_t *p, int platform);
 
 #define PERM_SYMTAB_SIZE 32

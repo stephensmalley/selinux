@@ -235,6 +235,7 @@ extern char *CIL_KEY_UNORDERED;
 extern char *CIL_KEY_SRC_INFO;
 extern char *CIL_KEY_SRC_CIL;
 extern char *CIL_KEY_SRC_HLL;
+extern char *CIL_KEY_SANDBOXDENY;
 
 /*
 	Symbol Table Array Indices
@@ -321,6 +322,7 @@ struct cil_db {
 	int multiple_decls;
 	int target_platform;
 	int policy_version;
+	int sandbox;
 };
 
 struct cil_root {
@@ -597,7 +599,10 @@ struct cil_tunable {
 #define CIL_AVRULE_AUDITALLOW  2
 #define CIL_AVRULE_DONTAUDIT   8
 #define CIL_AVRULE_NEVERALLOW 128
-#define CIL_AVRULE_AV         (AVRULE_ALLOWED | AVRULE_AUDITALLOW | AVRULE_DONTAUDIT | AVRULE_NEVERALLOW)
+#define CIL_AVRULE_SANDBOXDENY 4096
+#define CIL_AVRULE_AV		(AVRULE_ALLOWED | AVRULE_AUDITALLOW | \
+				 AVRULE_DONTAUDIT | AVRULE_NEVERALLOW | \
+				 AVRULE_SANDBOXDENY)
 struct cil_avrule {
 	int is_extended;
 	uint32_t rule_kind;

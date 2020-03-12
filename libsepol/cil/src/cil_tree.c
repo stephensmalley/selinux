@@ -1178,6 +1178,9 @@ void cil_tree_print_node(struct cil_tree_node *node)
 			case CIL_AVRULE_NEVERALLOW:
 				cil_log(CIL_INFO, "NEVERALLOW:");
 				break;
+			case CIL_AVRULE_SANDBOXDENY:
+				cil_log(CIL_INFO, "DENY:");
+				break;
 			}
 
 			if (rule->src != NULL) {

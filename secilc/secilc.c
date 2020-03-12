@@ -69,6 +69,9 @@ static __attribute__((__noreturn__)) void usage(const char *prog)
 	printf("  -X, --expand-size <SIZE>       Expand type attributes with fewer than <SIZE>\n");
 	printf("                                 members.\n");
 	printf("  -O, --optimize                 optimize final policy\n");
+	printf("  -s, --sandbox=<context>        write a binary sandbox policy file\n");
+	printf("  -a, --sandbox-allow            set sandbox policy in allow mode\n");
+	printf("  -d, --sandbox-deny             set sandbox policy in deny mode (default)\n");
 	printf("  -v, --verbose                  increment verbosity level\n");
 	printf("  -h, --help                     display usage information\n");
 	exit(1);
@@ -86,6 +89,7 @@ int main(int argc, char *argv[])
 	struct stat filedata;
 	uint32_t file_size;
 	char *output = NULL;
+	char *sandbox_context = NULL;
 	char *filecontexts = NULL;
 	struct cil_db *db = NULL;
 	int target = SEPOL_TARGET_SELINUX;
@@ -101,6 +105,8 @@ int main(int argc, char *argv[])
 	int optimize = 0;
 	int opt_char;
 	int opt_index = 0;
+	int sandbox = 0;
+	int sandbox_mode = SEPOL_SANDBOX_DENY;
 	char *fc_buf = NULL;
 	size_t fc_size;
 	enum cil_log_level log_level = CIL_ERR;
@@ -120,12 +126,15 @@ int main(int argc, char *argv[])
 		{"expand-generated", no_argument, 0, 'G'},
 		{"expand-size", required_argument, 0, 'X'},
 		{"optimize", no_argument, 0, 'O'},
+		{"sandbox", required_argument, 0, 's'},
+		{"sandbox-allow", no_argument, 0, 'a'},
+		{"sandbox-deny", no_argument, 0, 'd'},
 		{0, 0, 0, 0}
 	};
 	int i;
 
 	while (1) {
-		opt_char = getopt_long(argc, argv, "o:f:U:hvt:M:PDmNOc:GX:n", long_opts, &opt_index);
+		opt_char = getopt_long(argc, argv, "o:f:U:hvt:M:PDmNOc:GX:s:n", long_opts, &opt_index);
 		if (opt_char == -1) {
 			break;
 		}
@@ -217,6 +226,16 @@ int main(int argc, char *argv[])
 			case 'O':
 				optimize = 1;
 				break;
+			case 's':
+				sandbox_context = strdup(optarg);
+				sandbox = 1;
+				break;
+			case 'a':
+				sandbox_mode = SEPOL_SANDBOX_ALLOW;
+				break;
+			case 'd':
+				sandbox_mode = SEPOL_SANDBOX_DENY;
+				break;
 			case 'h':
 				usage(argv[0]);
 			case '?':
@@ -252,6 +271,7 @@ int main(int argc, char *argv[])
 	if (attrs_expand_size >= 0) {
 		cil_set_attrs_expand_size(db, (unsigned)attrs_expand_size);
 	}
+	cil_set_sandbox(db, sandbox);
 
 	for (i = optind; i < argc; i++) {
 		file = fopen(argv[i], "r");
@@ -337,6 +357,17 @@ int main(int argc, char *argv[])
 	}
 
 	sepol_policy_file_set_fp(pf, binary);
+
+	if (sandbox) {
+		rc = sepol_policydb_write_sandbox(pdb, pf, sandbox_context,
+						  sandbox_mode);
+		if (rc != 0) {
+			fprintf(stderr,
+				"Failed to write binary sandbox policy :%d\n",
+				rc);
+		}
+		goto exit;
+	}
 
 	rc = sepol_policydb_write(pdb, pf);
 	if (rc != 0) {
