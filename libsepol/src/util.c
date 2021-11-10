@@ -124,7 +124,7 @@ char *sepol_av_to_string(policydb_t * policydbp, uint32_t tclass,
 char *sepol_extended_perms_to_string(avtab_extended_perms_t *xperms)
 {
 	uint16_t value;
-	uint16_t low_bit;
+	uint16_t low_bit = 0;
 	uint16_t low_value;
 	unsigned int bit;
 	unsigned int in_range = 0;
@@ -135,7 +135,8 @@ char *sepol_extended_perms_to_string(avtab_extended_perms_t *xperms)
 	p = xpermsbuf;
 
 	if ((xperms->specified != AVTAB_XPERMS_IOCTLFUNCTION)
-		&& (xperms->specified != AVTAB_XPERMS_IOCTLDRIVER))
+		&& (xperms->specified != AVTAB_XPERMS_IOCTLDRIVER)
+		&& (xperms->specified != AVTAB_XPERMS_NLMSG))
 		return NULL;
 
 	len = snprintf(p, sizeof(xpermsbuf) - xpermslen, "ioctl { ");
@@ -173,6 +174,12 @@ char *sepol_extended_perms_to_string(avtab_extended_perms_t *xperms)
 				len = snprintf(p, sizeof(xpermsbuf) - xpermslen, "0x%hx-0x%hx ", value, (uint16_t) (value|0xff));
 			}
 
+		} else if (xperms->specified & AVTAB_XPERMS_NLMSG) {
+			if (in_range) {
+				len = snprintf(p, sizeof(xpermsbuf) - xpermslen, "0x%hx-0x%hx ", low_bit, (uint16_t) bit);
+			} else {
+				len = snprintf(p, sizeof(xpermsbuf) - xpermslen, "0x%hx ", (uint16_t) bit);
+			}
 		}
 
 		if (len < 0 || (size_t) len >= (sizeof(xpermsbuf) - xpermslen))

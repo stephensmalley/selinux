@@ -2159,8 +2159,10 @@ int cil_fill_permissionx(struct cil_tree_node *parse_current, struct cil_permiss
 
 	if (parse_current->data == CIL_KEY_IOCTL) {
 		permx->kind = CIL_PERMX_KIND_IOCTL;
+	} else if (parse_current->data == CIL_KEY_NLMSG) {
+		permx->kind = CIL_PERMX_KIND_NLMSG;
 	} else {
-		cil_log(CIL_ERR, "Unknown permissionx kind, %s. Must be \"ioctl\"\n", (char *)parse_current->data);
+		cil_log(CIL_ERR, "Unknown permissionx kind, %s. Must be one of [%s, %s]\n", (char *)parse_current->data, CIL_KEY_IOCTL, CIL_KEY_NLMSG);
 		rc = SEPOL_ERR;
 		goto exit;
 	}

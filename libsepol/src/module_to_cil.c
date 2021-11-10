@@ -627,14 +627,15 @@ exit:
 static int xperms_to_cil(const av_extended_perms_t *xperms)
 {
 	uint16_t value;
-	uint16_t low_bit;
+	uint16_t low_bit = 0;
 	uint16_t low_value;
 	unsigned int bit;
 	unsigned int in_range = 0;
 	int first = 1;
 
 	if ((xperms->specified != AVTAB_XPERMS_IOCTLFUNCTION)
-		&& (xperms->specified != AVTAB_XPERMS_IOCTLDRIVER))
+		&& (xperms->specified != AVTAB_XPERMS_IOCTLDRIVER)
+		&& (xperms->specified != AVTAB_XPERMS_NLMSG))
 		return -1;
 
 	for (bit = 0; bit < sizeof(xperms->perms)*8; bit++) {
@@ -674,6 +675,13 @@ static int xperms_to_cil(const av_extended_perms_t *xperms)
 			} else {
 				cil_printf("(range 0x%hx 0x%hx)", value, (uint16_t) (value|0xff));
 			}
+		} else if (xperms->specified & AVTAB_XPERMS_NLMSG) {
+			if (in_range) {
+				cil_printf("(range 0x%hx 0x%hx)", low_bit, (uint16_t) bit);
+				in_range = 0;
+			} else {
+				cil_printf("0x%hx", (uint16_t) bit);
+			}
 		}
 	}
 
@@ -683,7 +691,7 @@ static int xperms_to_cil(const av_extended_perms_t *xperms)
 static int avrulex_to_cil(int indent, struct policydb *pdb, uint32_t type, const char *src, const char *tgt, const class_perm_node_t *classperms, const av_extended_perms_t *xperms)
 {
 	int rc = -1;
-	const char *rule;
+	const char *rule, *func;
 	const struct class_perm_node *classperm;
 
 	switch (type) {
@@ -705,10 +713,23 @@ static int avrulex_to_cil(int indent, struct policydb *pdb, uint32_t type, const
 		goto exit;
 	}
 
+	switch (xperms->specified) {
+	case AVRULE_XPERMS_IOCTLDRIVER:
+	case AVRULE_XPERMS_IOCTLFUNCTION:
+		func = "ioctl";
+		break;
+	case AVRULE_XPERMS_NLMSG:
+		func = "nlmsg";
+		break;
+	default:
+		log_err("Unexpected xperm spec for %s, %s, %s: %hhu", rule, src, tgt, xperms->specified);
+		goto exit;
+	}
+
 	for (classperm = classperms; classperm != NULL; classperm = classperm->next) {
 		cil_indent(indent);
 		cil_printf("(%s %s %s (%s %s (", rule, src, tgt,
-			   "ioctl", pdb->p_class_val_to_name[classperm->tclass - 1]);
+			   func, pdb->p_class_val_to_name[classperm->tclass - 1]);
 		xperms_to_cil(xperms);
 		cil_printf(")))\n");
 	}

@@ -101,6 +101,9 @@ static int check_extended_permissions(av_extended_perms_t *neverallow, avtab_ext
 	} else if ((neverallow->specified == AVRULE_XPERMS_IOCTLDRIVER)
 			&& (allow->specified == AVTAB_XPERMS_IOCTLDRIVER)) {
 		rc = extended_permissions_and(neverallow->perms, allow->perms);
+	} else if ((neverallow->specified == AVRULE_XPERMS_NLMSG)
+			&& (allow->specified == AVTAB_XPERMS_NLMSG)) {
+		rc = extended_permissions_and(neverallow->perms, allow->perms);
 	}
 
 	return rc;
@@ -131,6 +134,12 @@ static void extended_permissions_violated(avtab_extended_perms_t *result,
 	} else if ((neverallow->specified == AVRULE_XPERMS_IOCTLDRIVER)
 			&& (allow->specified == AVTAB_XPERMS_IOCTLDRIVER)) {
 		result->specified = AVTAB_XPERMS_IOCTLDRIVER;
+		for (i = 0; i < EXTENDED_PERMS_LEN; i++)
+			result->perms[i] = neverallow->perms[i] & allow->perms[i];
+	} else if ((neverallow->specified == AVRULE_XPERMS_NLMSG)
+			&& (allow->specified == AVTAB_XPERMS_NLMSG)) {
+		result->specified = AVTAB_XPERMS_NLMSG;
+		result->driver = 0;
 		for (i = 0; i < EXTENDED_PERMS_LEN; i++)
 			result->perms[i] = neverallow->perms[i] & allow->perms[i];
 	}
@@ -166,7 +175,8 @@ static int report_assertion_extended_permissions(sepol_handle_t *handle,
 			     node = avtab_search_node_next(node, tmp_key.specified)) {
 				xperms = node->datum.xperms;
 				if ((xperms->specified != AVTAB_XPERMS_IOCTLFUNCTION)
-						&& (xperms->specified != AVTAB_XPERMS_IOCTLDRIVER))
+						&& (xperms->specified != AVTAB_XPERMS_IOCTLDRIVER)
+						&& (xperms->specified != AVTAB_XPERMS_NLMSG))
 					continue;
 
 				rc = check_extended_permissions(avrule->xperms, xperms);
@@ -346,7 +356,8 @@ static int check_assertion_extended_permissions_avtab(avrule_t *avrule, avtab_t 
 				xperms = node->datum.xperms;
 
 				if ((xperms->specified != AVTAB_XPERMS_IOCTLFUNCTION)
-						&& (xperms->specified != AVTAB_XPERMS_IOCTLDRIVER))
+						&& (xperms->specified != AVTAB_XPERMS_IOCTLDRIVER)
+						&& (xperms->specified != AVTAB_XPERMS_NLMSG))
 					continue;
 				rc = check_extended_permissions(neverallow_xperms, xperms);
 				if (rc)

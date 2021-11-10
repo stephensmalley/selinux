@@ -1818,27 +1818,27 @@ avrule_t *define_cond_pol_list(avrule_t * avlist, avrule_t * sl)
 	return sl;
 }
 
-typedef struct av_ioctl_range {
+typedef struct av_xperm_range {
 	uint16_t low;
 	uint16_t high;
-} av_ioctl_range_t;
+} av_xperm_range_t;
 
-struct av_ioctl_range_list {
+struct av_xperm_range_list {
 	uint8_t omit;
-	av_ioctl_range_t range;
-	struct av_ioctl_range_list *next;
+	av_xperm_range_t range;
+	struct av_xperm_range_list *next;
 };
 
-static int avrule_sort_ioctls(struct av_ioctl_range_list **rangehead)
+static int avrule_sort_xperms(struct av_xperm_range_list **rangehead)
 {
-	struct av_ioctl_range_list *r, *r2, *sorted, *sortedhead = NULL;
+	struct av_xperm_range_list *r, *r2, *sorted, *sortedhead = NULL;
 
 	/* order list by range.low */
 	for (r = *rangehead; r != NULL; r = r->next) {
-		sorted = malloc(sizeof(struct av_ioctl_range_list));
+		sorted = malloc(sizeof(struct av_xperm_range_list));
 		if (sorted == NULL)
 			goto error;
-		memcpy(sorted, r, sizeof(struct av_ioctl_range_list));
+		memcpy(sorted, r, sizeof(struct av_xperm_range_list));
 		sorted->next = NULL;
 		if (sortedhead == NULL) {
 			sortedhead = sorted;
@@ -1877,9 +1877,9 @@ error:
 	return -1;
 }
 
-static int avrule_merge_ioctls(struct av_ioctl_range_list **rangehead)
+static int avrule_merge_xperms(struct av_xperm_range_list **rangehead)
 {
-	struct av_ioctl_range_list *r, *tmp;
+	struct av_xperm_range_list *r, *tmp;
 	r = *rangehead;
 	while (r != NULL && r->next != NULL) {
 		/* merge */
@@ -1897,15 +1897,15 @@ static int avrule_merge_ioctls(struct av_ioctl_range_list **rangehead)
 	return 0;
 }
 
-static int avrule_read_ioctls(struct av_ioctl_range_list **rangehead)
+static int avrule_read_xperm_ranges(struct av_xperm_range_list **rangehead)
 {
 	char *id;
-	struct av_ioctl_range_list *rnew, *r = NULL;
+	struct av_xperm_range_list *rnew, *r = NULL;
 	uint8_t omit = 0;
 
 	*rangehead = NULL;
 
-	/* read in all the ioctl commands */
+	/* read in all the netlink ranges / ioctl commands */
 	while ((id = queue_remove(id_queue))) {
 		if (strcmp(id,"~") == 0) {
 			/* these are values to be omitted */
@@ -1917,13 +1917,13 @@ static int avrule_read_ioctls(struct av_ioctl_range_list **rangehead)
 			id = queue_remove(id_queue);
 			r->range.high = (uint16_t) strtoul(id,NULL,0);
 			if (r->range.high < r->range.low) {
-				yyerror("Ioctl ranges must be in ascending order.");
+				yyerror("xperm ranges must be in ascending order.");
 				return -1;
 			}
 			free(id);
 		} else {
 			/* read in new low value */
-			rnew = malloc(sizeof(struct av_ioctl_range_list));
+			rnew = malloc(sizeof(struct av_xperm_range_list));
 			if (rnew == NULL)
 				goto error;
 			rnew->next = NULL;
@@ -1950,11 +1950,11 @@ error:
 }
 
 /* flip to included ranges */
-static int avrule_omit_ioctls(struct av_ioctl_range_list **rangehead)
+static int avrule_omit_xperms(struct av_xperm_range_list **rangehead)
 {
-	struct av_ioctl_range_list *rnew, *r, *newhead, *r2;
+	struct av_xperm_range_list *rnew, *r, *newhead, *r2;
 
-	rnew = calloc(1, sizeof(struct av_ioctl_range_list));
+	rnew = calloc(1, sizeof(struct av_xperm_range_list));
 	if (!rnew)
 		goto error;
 
@@ -1972,7 +1972,7 @@ static int avrule_omit_ioctls(struct av_ioctl_range_list **rangehead)
 
 	while (r) {
 		r2->range.high = r->range.low - 1;
-		rnew = calloc(1, sizeof(struct av_ioctl_range_list));
+		rnew = calloc(1, sizeof(struct av_xperm_range_list));
 		if (!rnew)
 			goto error;
 		r2->next = rnew;
@@ -1998,27 +1998,27 @@ error:
 	return -1;
 }
 
-static int avrule_ioctl_ranges(struct av_ioctl_range_list **rangelist)
+static int avrule_xperm_ranges(struct av_xperm_range_list **rangelist)
 {
-	struct av_ioctl_range_list *rangehead;
+	struct av_xperm_range_list *rangehead;
 	uint8_t omit;
 
 	/* read in ranges to include and omit */
-	if (avrule_read_ioctls(&rangehead))
+	if (avrule_read_xperm_ranges(&rangehead))
 		return -1;
 	if (rangehead == NULL) {
-		yyerror("error processing ioctl commands");
+		yyerror("error processing ioctl/netlink commands");
 		return -1;
 	}
 	omit = rangehead->omit;
-	/* sort and merge the input ioctls */
-	if (avrule_sort_ioctls(&rangehead))
+	/* sort and merge the input ranges */
+	if (avrule_sort_xperms(&rangehead))
 		return -1;
-	if (avrule_merge_ioctls(&rangehead))
+	if (avrule_merge_xperms(&rangehead))
 		return -1;
 	/* flip ranges if these are omitted */
 	if (omit) {
-		if (avrule_omit_ioctls(&rangehead))
+		if (avrule_omit_xperms(&rangehead))
 			return -1;
 	}
 
@@ -2189,11 +2189,11 @@ static int avrule_xperms_used(const av_extended_perms_t *xperms)
 #define IOC_DRIV(x) ((x) >> 8)
 #define IOC_FUNC(x) ((x) & 0xff)
 #define IOC_CMD(driver, func) (((driver) << 8) + (func))
-static int avrule_ioctl_partialdriver(struct av_ioctl_range_list *rangelist,
+static int avrule_ioctl_partialdriver(struct av_xperm_range_list *rangelist,
 				av_extended_perms_t *complete_driver,
 				av_extended_perms_t **extended_perms)
 {
-	struct av_ioctl_range_list *r;
+	struct av_xperm_range_list *r;
 	av_extended_perms_t *xperms;
 	uint8_t low, high;
 
@@ -2228,10 +2228,10 @@ static int avrule_ioctl_partialdriver(struct av_ioctl_range_list *rangelist,
 
 }
 
-static int avrule_ioctl_completedriver(struct av_ioctl_range_list *rangelist,
+static int avrule_ioctl_completedriver(struct av_xperm_range_list *rangelist,
 			av_extended_perms_t **extended_perms)
 {
-	struct av_ioctl_range_list *r;
+	struct av_xperm_range_list *r;
 	av_extended_perms_t *xperms;
 	uint16_t low, high;
 	xperms = calloc(1, sizeof(av_extended_perms_t));
@@ -2270,10 +2270,10 @@ static int avrule_ioctl_completedriver(struct av_ioctl_range_list *rangelist,
 	return 0;
 }
 
-static int avrule_ioctl_func(struct av_ioctl_range_list *rangelist,
+static int avrule_xperms_single_driver(struct av_xperm_range_list *rangelist,
 		av_extended_perms_t **extended_perms, unsigned int driver)
 {
-	struct av_ioctl_range_list *r;
+	struct av_xperm_range_list *r;
 	av_extended_perms_t *xperms;
 	uint16_t low, high;
 
@@ -2307,7 +2307,6 @@ static int avrule_ioctl_func(struct av_ioctl_range_list *rangelist,
 		high = IOC_FUNC(high);
 		avrule_xperm_setrangebits(low, high, xperms);
 		xperms->driver = driver;
-		xperms->specified = AVRULE_XPERMS_IOCTLFUNCTION;
 		r = r->next;
 	}
 
@@ -2318,6 +2317,18 @@ static int avrule_ioctl_func(struct av_ioctl_range_list *rangelist,
 		*extended_perms = NULL;
 	}
 	return 0;
+}
+
+void avrule_ioctl_freeranges(struct av_xperm_range_list *rangelist)
+{
+	struct av_xperm_range_list *r, *tmp;
+	
+	r = rangelist;
+	while (r) {
+		tmp = r;
+		r = r->next;
+		free(tmp);
+	}
 }
 
 static unsigned int xperms_for_each_bit(unsigned int *bit, av_extended_perms_t *xperms)
@@ -2384,13 +2395,13 @@ static int avrule_cpy(avrule_t *dest, const avrule_t *src)
 static int define_te_avtab_ioctl(const avrule_t *avrule_template)
 {
 	avrule_t *avrule;
-	struct av_ioctl_range_list *rangelist, *r;
+	struct av_xperm_range_list *rangelist, *r;
 	av_extended_perms_t *complete_driver, *partial_driver, *xperms;
 	unsigned int i;
 
 
 	/* organize ioctl ranges */
-	if (avrule_ioctl_ranges(&rangelist))
+	if (avrule_xperm_ranges(&rangelist))
 		return -1;
 
 	/* create rule for ioctl driver types that are entirely enabled */
@@ -2422,10 +2433,11 @@ static int define_te_avtab_ioctl(const avrule_t *avrule_template)
 	 */
 	i = 0;
 	while (xperms_for_each_bit(&i, partial_driver)) {
-		if (avrule_ioctl_func(rangelist, &xperms, i))
+		if (avrule_xperms_single_driver(rangelist, &xperms, i))
 			return -1;
 
 		if (xperms) {
+			xperms->specified = AVRULE_XPERMS_IOCTLFUNCTION;
 			avrule = (avrule_t *) calloc(1, sizeof(avrule_t));
 			if (!avrule) {
 				yyerror("out of memory");
@@ -2451,6 +2463,38 @@ done:
 	return 0;
 }
 
+int define_te_avtab_netlink(avrule_t *avrule_template)
+{
+	avrule_t *avrule;
+	struct av_xperm_range_list *range_list;
+	av_extended_perms_t *xperms = NULL;
+
+	/* organize message ranges */
+	if (avrule_xperm_ranges(&range_list))
+		return -1;
+
+	/* Netlink message types comfortably fit into a single driver
+	 * (see RTM_MAX in uapi/linux/rtnetlink.h)
+	 */
+	avrule_xperms_single_driver(range_list, &xperms, 0);
+
+	if (xperms && avrule_xperms_used(xperms)) {
+		xperms->specified = AVRULE_XPERMS_NLMSG;
+		avrule = (avrule_t *) calloc(1, sizeof(avrule_t));
+		if (!avrule) {
+			yyerror("out of memory");
+			return -1;
+		}
+		if (avrule_cpy(avrule, avrule_template))
+			return -1;
+		avrule->xperms = xperms;
+		append_avrule(avrule);
+	} else {
+		free(xperms);
+	}
+	return 0;
+}
+
 int define_te_avtab_extended_perms(int which)
 {
 	char *id;
@@ -2473,8 +2517,10 @@ int define_te_avtab_extended_perms(int which)
 	id = queue_remove(id_queue);
 	if (strcmp(id,"ioctl") == 0) {
 		rc = define_te_avtab_ioctl(avrule_template);
+	} else if (strcmp(id, "nlmsg") == 0) {
+		rc = define_te_avtab_netlink(avrule_template);
 	} else {
-		yyerror("only ioctl extended permissions are supported");
+		yyerror("only ioctl / nlmsg extended permissions are supported");
 		rc = -1;
 	}
 

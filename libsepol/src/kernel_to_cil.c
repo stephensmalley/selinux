@@ -1617,7 +1617,8 @@ static char *xperms_to_str(avtab_extended_perms_t *xperms)
 	remaining = sizeof(xpermsbuf);
 
 	if ((xperms->specified != AVTAB_XPERMS_IOCTLFUNCTION)
-		&& (xperms->specified != AVTAB_XPERMS_IOCTLDRIVER)) {
+		&& (xperms->specified != AVTAB_XPERMS_IOCTLDRIVER)
+		&& (xperms->specified != AVTAB_XPERMS_NLMSG)) {
 		return NULL;
 	}
 
@@ -1637,7 +1638,8 @@ static char *xperms_to_str(avtab_extended_perms_t *xperms)
 			continue;
 		}
 
-		if (xperms->specified & AVTAB_XPERMS_IOCTLFUNCTION) {
+		if (xperms->specified & AVTAB_XPERMS_IOCTLFUNCTION
+			|| xperms->specified & AVTAB_XPERMS_NLMSG) {
 			value = xperms->driver<<8 | bit;
 			if (in_range) {
 				low_value = xperms->driver<<8 | low_bit;
@@ -1679,7 +1681,7 @@ static char *avtab_node_to_str(struct policydb *pdb, avtab_key_t *key, avtab_dat
 {
 	uint32_t data = datum->data;
 	type_datum_t *type;
-	const char *flavor, *tgt;
+	const char *flavor, *tgt, *func;
 	char *src, *class, *perms, *new;
 	char *rule = NULL;
 
@@ -1742,8 +1744,21 @@ static char *avtab_node_to_str(struct policydb *pdb, avtab_key_t *key, avtab_dat
 			goto exit;
 		}
 
+		switch (datum->xperms->specified) {
+		case AVRULE_XPERMS_IOCTLDRIVER:
+		case AVRULE_XPERMS_IOCTLFUNCTION:
+			func = "ioctl";
+			break;
+		case AVRULE_XPERMS_NLMSG:
+			func = "nlmsg";
+			break;
+		default:
+			sepol_log_err("Unexpected xperm spec: %hhu", datum->xperms->specified);
+			goto exit;
+		}
+
 		rule = create_str("(%s %s %s (%s %s (%s)))", 6,
-				  flavor, src, tgt, "ioctl", class, perms);
+				  flavor, src, tgt, func, class, perms);
 	} else {
 		new = pdb->p_type_val_to_name[data - 1];
 
