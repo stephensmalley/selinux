@@ -271,4 +271,6 @@ LIBSELINUX_3.10 {
 LIBSELINUX_3.12 {
   global:
     selinux_policy_open;
+    selinux_unshare;
+    is_selinux_unshared;
 } LIBSELINUX_3.10;
