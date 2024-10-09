@@ -267,3 +267,9 @@ LIBSELINUX_3.10 {
   global:
     selinux_restorecon_get_relabeled_files;
 } LIBSELINUX_3.9;
+
+LIBSELINUX_4.0 {
+  global:
+    selinux_unshare;
+    is_selinux_unshared;
+} LIBSELINUX_3.10;
