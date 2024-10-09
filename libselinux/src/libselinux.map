@@ -251,6 +251,7 @@ LIBSELINUX_3.5 {
   global:
     getpidprevcon;
     getpidprevcon_raw;
+    selinux_unshare;
 } LIBSELINUX_3.4;
 
 LIBSELINUX_3.8 {
