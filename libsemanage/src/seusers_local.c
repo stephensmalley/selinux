@@ -18,39 +18,53 @@ typedef struct semanage_seuser record_t;
 #include "string.h"
 #include <stdlib.h>
 
-static char *semanage_user_roles(semanage_handle_t * handle, const char *sename) {
+static char *semanage_user_roles(semanage_handle_t * handle, const char * sename) {
 	char *roles = NULL;
-	unsigned int num_roles;
-	size_t i;
-	size_t size = 0;
-	const char **roles_arr;
+	const char **roles_arr = NULL;
 	semanage_user_key_t *key = NULL;
-	semanage_user_t * user;
-	if (semanage_user_key_create(handle, sename, &key) >= 0) {
-		if (semanage_user_query(handle, key, &user) >= 0) {
-			if (semanage_user_get_roles(handle,
-						    user,
-						    &roles_arr,
-						    &num_roles) >= 0) {
-				for (i = 0; i<num_roles; i++) {
-					size += (strlen(roles_arr[i]) + 1);
-				}
-				if (num_roles == 0) {
-					roles = strdup("");
-				} else {
-					roles = malloc(size);
-					if (roles) {
-						strcpy(roles,roles_arr[0]);
-						for (i = 1; i<num_roles; i++) {
-							strcat(roles,",");
-							strcat(roles,roles_arr[i]);
-						}
-					}
-				}
-				free(roles_arr);
-			}
-			semanage_user_free(user);
-		}
+	semanage_user_t *user = NULL;
+
+	if (semanage_user_key_create(handle, sename, &key) < 0) {
+		goto cleanup;
+	}
+
+	if (semanage_user_query(handle, key, &user) < 0) {
+		goto cleanup;
+	}
+
+	unsigned int num_roles = 0;
+	if (semanage_user_get_roles(handle, user, &roles_arr, &num_roles) < 0) {
+		goto cleanup;
+	}
+
+	if (num_roles == 0) {
+		roles = strdup("");
+		goto cleanup;
+	}
+
+	size_t size = 0;
+	for (size_t i = 0; i < num_roles; i++) {
+		size += (strlen(roles_arr[i]) + 1);
+	}
+
+	roles = malloc(size);
+	if (!roles) {
+		goto cleanup;
+	}
+
+	strcpy(roles, roles_arr[0]);
+
+	for (size_t i = 1; i < num_roles; i++) {
+		strcat(roles, ",");
+		strcat(roles, roles_arr[i]);
+	}
+
+cleanup:
+	free(roles_arr);
+	if (user) {
+		semanage_user_free(user);
+	}
+	if (key) {
 		semanage_user_key_free(key);
 	}
 	return roles;
