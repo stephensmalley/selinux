@@ -1,0 +1,13 @@
+name: Check format
+
+on: [push, pull_request]
+
+jobs:
+  clang-format:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: check
+        run: make check-format

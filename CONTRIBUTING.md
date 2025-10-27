@@ -53,8 +53,9 @@ When preparing patches, please follow these guidelines:
 -   Separate large patches into logical patches
 -   Patch descriptions must end with your "Signed-off-by" line. This means your
     code meets the Developer's certificate of origin, see below.
--   C code should be formatted using clang-format, using the .clang-format
-    configuration file at the root of this repository.
+-   C code should be formatted with clang-format, using the .clang-format
+    configuration file at the root of this repository. The targets `format` and
+    `check-format` are provided by the top-level Makefile for convenience.
 
 When adding new, large features or tools it is best to discuss the
 design on the mailing list prior to submitting the patch.
