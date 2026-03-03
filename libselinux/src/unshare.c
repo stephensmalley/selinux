@@ -17,7 +17,7 @@
 
 #include "selinux_internal.h"
 #include "policy.h"
-
+#include "callbacks.h"
 
 #ifndef LSM_FLAG_SINGLE
 #define LSM_FLAG_SINGLE 0x0001
@@ -83,10 +83,10 @@ int selinux_unshare(void)
 	if (ret < 0)
 		return -1;
 
-	/* Unmount the selinuxfs which refers to the old/parent namespace */
+	/* Try to unmount the selinuxfs which refers to the old/parent namespace */
 	ret = umount(SELINUXMNT);
 	if (ret < 0)
-		return ret;
+		selinux_log(SELINUX_WARNING, "Couldn't unmount old selinuxfs: %m\n");
 
 	/*
 	 * Caller is responsible for mounting new selinuxfs, loading policy,
