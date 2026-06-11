@@ -10,8 +10,12 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <sys/syscall.h>
 #include <syslog.h>
 #include <sys/mount.h>
+#ifdef __NR_openat2
+#include <linux/openat2.h>
+#endif
 #include <glob.h>
 #include <pwd.h>
 #include <sched.h>
@@ -219,10 +223,19 @@ static int check_owner_gid(gid_t gid, const char *file, struct stat *st)
  */
 static int pin_dir(const char *dir, struct stat *st_out)
 {
-	int fd;
+	int fd = -1;
 	struct stat sb;
 
-	fd = open(dir, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
+#ifdef __NR_openat2
+	struct open_how how = {
+		.flags = O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC,
+		.resolve = RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS,
+	};
+
+	fd = syscall(__NR_openat2, AT_FDCWD, dir, &how, sizeof(how));
+	if (fd < 0 && (errno == ENOSYS || errno == EINVAL))
+#endif
+		fd = open(dir, O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
 	if (fd < 0) {
 		fprintf(stderr, _("Failed to open %s: %m\n"), dir);
 		return -1;
