@@ -91,7 +91,7 @@ CFLAGS ?= -O -Wall -W -Wundef -Wformat-y2k -Wformat-security -Winit-self -Wmissi
 
 override CFLAGS += $(LFS_CFLAGS)
 
-LD_SONAME_FLAGS=-soname,$(LIBSO),--version-script=libselinux.map,-z,defs,-z,relro
+LD_SONAME_FLAGS=-soname,$(LIBSO),--version-script=libselinux.map,-z,defs,-z,relro,--undefined-version
 
 ifeq ($(OS), Darwin)
 override CFLAGS += -I/opt/local/include
