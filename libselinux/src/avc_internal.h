@@ -14,6 +14,7 @@
 #include <string.h>
 #include <selinux/avc.h>
 #include "callbacks.h"
+#include "selinux_internal.h"
 
 /* callback pointers */
 extern void *(*avc_func_malloc)(size_t);
@@ -115,25 +116,41 @@ static inline void avc_stop_thread(void *thread)
 
 static inline void *avc_alloc_lock(void)
 {
-	return avc_func_alloc_lock ? avc_func_alloc_lock() : NULL;
+	pthread_mutex_t *m;
+
+	if (avc_func_alloc_lock)
+		return avc_func_alloc_lock();
+
+	m = avc_malloc(sizeof(*m));
+	if (m)
+		__pthread_mutex_init(m, NULL);
+	return m;
 }
 
 static inline void avc_get_lock(void *lock)
 {
 	if (avc_func_get_lock)
 		avc_func_get_lock(lock);
+	else if (lock)
+		__pthread_mutex_lock((pthread_mutex_t *)lock);
 }
 
 static inline void avc_release_lock(void *lock)
 {
 	if (avc_func_release_lock)
 		avc_func_release_lock(lock);
+	else if (lock)
+		__pthread_mutex_unlock((pthread_mutex_t *)lock);
 }
 
 static inline void avc_free_lock(void *lock)
 {
 	if (avc_func_free_lock)
 		avc_func_free_lock(lock);
+	else if (lock) {
+		__pthread_mutex_destroy((pthread_mutex_t *)lock);
+		avc_free(lock);
+	}
 }
 
 /* statistics helper routines */
