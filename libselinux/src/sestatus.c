@@ -36,6 +36,7 @@ struct selinux_status_t {
  * Valid Pointer : opened and mapped correctly
  */
 static struct selinux_status_t *selinux_status = NULL;
+static pthread_mutex_t status_lock = PTHREAD_MUTEX_INITIALIZER;
 static uint32_t last_seqno;
 static uint32_t last_policyload;
 
@@ -98,9 +99,25 @@ int selinux_status_updated(void)
 		return -1;
 	}
 
+	/*
+	 * Fast path with no locking is only possible when the status page
+	 * is mapped, the last_seqno is even (stable) and it matches the
+	 * curr_seqno.
+	 */
+	if (selinux_status != MAP_FAILED) {
+		curr_seqno = read_sequence(selinux_status);
+		if ((last_seqno & 0x0001) == 0 && curr_seqno == last_seqno)
+			return 0;
+	}
+
+	/* Otherwise we have to take the mutex and re-check */
+	__pthread_mutex_lock(&status_lock);
+
 	if (selinux_status == MAP_FAILED) {
-		if (avc_netlink_check_nb() < 0)
+		if (avc_netlink_check_nb() < 0) {
+			__pthread_mutex_unlock(&status_lock);
 			return -1;
+		}
 
 		curr_seqno = fallback_sequence;
 	} else {
@@ -117,11 +134,14 @@ int selinux_status_updated(void)
 	if (last_seqno & 0x0001)
 		last_seqno = curr_seqno;
 
-	if (last_seqno == curr_seqno)
+	if (last_seqno == curr_seqno) {
+		__pthread_mutex_unlock(&status_lock);
 		return 0;
+	}
 
 	if (selinux_status == MAP_FAILED) {
 		last_seqno = curr_seqno;
+		__pthread_mutex_unlock(&status_lock);
 		return 1;
 	}
 
@@ -134,16 +154,21 @@ int selinux_status_updated(void)
 	} while (tmp_seqno != curr_seqno);
 
 	if (avc_enforcing != (int)enforcing) {
-		if (avc_process_setenforce(enforcing) < 0)
+		if (avc_process_setenforce(enforcing) < 0) {
+			__pthread_mutex_unlock(&status_lock);
 			return -1;
+		}
 	}
 	if (last_policyload != policyload) {
-		if (avc_process_policyload(policyload) < 0)
+		if (avc_process_policyload(policyload) < 0) {
+			__pthread_mutex_unlock(&status_lock);
 			return -1;
+		}
 		last_policyload = policyload;
 	}
 	last_seqno = curr_seqno;
 
+	__pthread_mutex_unlock(&status_lock);
 	return 1;
 }
 
@@ -164,10 +189,12 @@ int selinux_status_getenforce(void)
 	}
 
 	if (selinux_status == MAP_FAILED) {
-		if (avc_netlink_check_nb() < 0)
-			return -1;
+		int rc;
 
-		return fallback_enforcing;
+		__pthread_mutex_lock(&status_lock);
+		rc = (avc_netlink_check_nb() < 0) ? -1 : fallback_enforcing;
+		__pthread_mutex_unlock(&status_lock);
+		return rc;
 	}
 
 	/* sequence must not be changed during references */
@@ -201,10 +228,12 @@ int selinux_status_policyload(void)
 	}
 
 	if (selinux_status == MAP_FAILED) {
-		if (avc_netlink_check_nb() < 0)
-			return -1;
+		int rc;
 
-		return fallback_policyload;
+		__pthread_mutex_lock(&status_lock);
+		rc = (avc_netlink_check_nb() < 0) ? -1 : fallback_policyload;
+		__pthread_mutex_unlock(&status_lock);
+		return rc;
 	}
 
 	/* sequence must not be changed during references */
