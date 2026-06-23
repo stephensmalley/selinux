@@ -108,9 +108,10 @@ static int process_line(const char *path, char *line_buf, unsigned int line_num,
 		       &temp);
 	if (items != 3) {
 		if (items > 0)
-			selinux_log(SELINUX_WARNING,
-				    "%s:  line %u has invalid format, skipped",
-				    path, line_num);
+			selinux_log(
+				SELINUX_WARNING,
+				"%s:  line %u has invalid format, skipped\n",
+				path, line_num);
 		goto skip;
 	}
 
