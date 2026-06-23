@@ -280,6 +280,11 @@ static int process_pam_config(FILE *cfg)
 				_("newrole: service name configuration hashtable overflow\n"));
 			goto err;
 		}
+		if (ret != HASHTAB_SUCCESS) {
+			/* duplicate entry: hashtab kept the first, free this one */
+			free(app);
+			free(service);
+		}
 	}
 
 	free(line_buf);
@@ -1208,7 +1213,7 @@ int main(int argc, char *argv[])
 		 */
 		pid_t pid;
 		int exit_code = 0;
-		int status;
+		int status = 0;
 
 		do {
 			pid = wait(&status);
@@ -1224,6 +1229,7 @@ int main(int argc, char *argv[])
 		}
 		freecon(tty_context);
 		freecon(new_tty_context);
+		freecon(old_context);
 		if (close(fd)) {
 			fprintf(stderr, _("Failed to close tty properly\n"));
 			exit_code = -1;
