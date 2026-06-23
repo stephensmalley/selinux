@@ -254,6 +254,8 @@ static int raw_context_to_color(const char *raw, char **colors)
 	int32_t ret_val;
 	int fd;
 
+	*colors = NULL;
+
 	fd = setransd_open();
 	if (fd < 0)
 		return fd;
