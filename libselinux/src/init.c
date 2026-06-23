@@ -17,7 +17,7 @@
 #include "setrans_internal.h"
 
 char *selinux_mnt = NULL;
-int selinux_page_size = 0;
+size_t selinux_page_size = 0;
 
 int has_selinux_config = 0;
 
@@ -145,8 +145,14 @@ void set_selinuxmnt(const char *mnt)
 static void init_lib(void) __attribute__((constructor));
 static void init_lib(void)
 {
+	long page_size;
+
 	SELINUX_PROTECT_ERRNO;
-	selinux_page_size = sysconf(_SC_PAGE_SIZE);
+	page_size = sysconf(_SC_PAGE_SIZE);
+	/* Fall back to a sane default if sysconf() fails or returns an implausible value. */
+	selinux_page_size = (page_size > 0 && page_size <= INT_MAX) ?
+				    (size_t)page_size :
+				    4096;
 	init_selinuxmnt();
 #ifndef ANDROID
 	has_selinux_config = (access(SELINUXCONFIG, F_OK) == 0);

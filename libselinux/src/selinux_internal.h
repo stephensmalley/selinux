@@ -7,7 +7,7 @@
 #include <stdio.h>
 
 extern int require_seusers;
-extern int selinux_page_size;
+extern size_t selinux_page_size;
 
 /* Make pthread_once optional */
 #pragma weak pthread_once

@@ -15,7 +15,8 @@ int security_validatetrans_raw(const char *scon, const char *tcon,
 {
 	char path[PATH_MAX];
 	char *buf = NULL;
-	int size, bufsz;
+	size_t size;
+	int bufsz;
 	int fd, ret = -1;
 	errno = ENOENT;
 
@@ -38,7 +39,7 @@ int security_validatetrans_raw(const char *scon, const char *tcon,
 
 	bufsz = snprintf(buf, size, "%s %s %hu %s", scon, tcon,
 			 unmap_class(tclass), newcon);
-	if (bufsz >= size || bufsz < 0) {
+	if (bufsz < 0 || (size_t)bufsz >= size) {
 		// It got truncated or there was an encoding error
 		goto out;
 	}
