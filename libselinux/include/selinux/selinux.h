@@ -387,7 +387,7 @@ struct security_class_mapping {
  * offsets for a particular policy.  However, that strongly ties the build of the userspace components to a particular policy.
  *
  * By using this function to map between integer offsets and security
- * class names, it's possible to replace a system policies that have
+ * class names, it's possible to replace a system policy with one that has
  * at least the same set of security class names as used by the
  * userspace object managers.
  *
@@ -689,8 +689,8 @@ extern int selinux_trans_to_raw_context(const char *trans, char **rawp);
 extern int selinux_raw_to_trans_context(const char *raw, char **transp);
 
 /* Perform context translation between security contexts
-   and display colors.  Returns a space-separated list of ten
-   ten hex RGB triples prefixed by hash marks, e.g. "#ff0000".
+   and display colors.  Returns a space-separated list of eight
+   hex RGB triples prefixed by hash marks, e.g. "#ff0000".
    Caller must free the resulting string via free.
    Returns -1 upon an error or 0 otherwise. */
 extern int selinux_raw_context_to_color(const char *raw, char **color_str);

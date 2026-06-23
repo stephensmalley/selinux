@@ -33,7 +33,7 @@ extern int selinux_restorecon(const char *pathname,
  * @nthreads: specifies the number of threads to use (0 = use number of CPUs
  *            currently online)
  *
- * Same as selinux_restorecon(3), but allows to use multiple threads to do
+ * Same as selinux_restorecon(3), but allows the use of multiple threads to do
  * the work.
  */
 extern int selinux_restorecon_parallel(const char *pathname,
@@ -146,13 +146,13 @@ extern int selinux_restorecon_parallel(const char *pathname,
 
 /**
  * selinux_restorecon_set_sehandle - Set the global fc handle.
- * @hndl: specifies handle to set as the global fc handle.
+ * @handle: specifies handle to set as the global fc handle.
  *
  * Called by a process that has already called selabel_open(3) with its
  * required parameters, or if selinux_restorecon_default_handle(3) has been
  * called to set the default selabel_open(3) parameters.
  */
-extern void selinux_restorecon_set_sehandle(struct selabel_handle *hndl);
+extern void selinux_restorecon_set_sehandle(struct selabel_handle *handle);
 
 /**
  * selinux_restorecon_default_handle - Sets default selabel_open(3) parameters

@@ -107,20 +107,19 @@ extern int selabel_lookup_raw(struct selabel_handle *handle, char **con,
 extern bool selabel_partial_match(struct selabel_handle *handle,
 				  const char *key);
 
-extern bool selabel_get_digests_all_partial_matches(struct selabel_handle *rec,
-						    const char *key,
-						    uint8_t **calculated_digest,
-						    uint8_t **xattr_digest,
-						    size_t *digest_len);
-extern bool selabel_hash_all_partial_matches(struct selabel_handle *rec,
+extern bool selabel_get_digests_all_partial_matches(
+	struct selabel_handle *handle, const char *key,
+	uint8_t **calculated_digest, uint8_t **xattr_digest,
+	size_t *digest_len);
+extern bool selabel_hash_all_partial_matches(struct selabel_handle *handle,
 					     const char *key, uint8_t *digest);
 
-extern int selabel_lookup_best_match(struct selabel_handle *rec, char **con,
+extern int selabel_lookup_best_match(struct selabel_handle *handle, char **con,
 				     const char *key, const char **aliases,
 				     int type);
-extern int selabel_lookup_best_match_raw(struct selabel_handle *rec, char **con,
-					 const char *key, const char **aliases,
-					 int type);
+extern int selabel_lookup_best_match_raw(struct selabel_handle *handle,
+					 char **con, const char *key,
+					 const char **aliases, int type);
 
 /**
  * selabel_digest - Retrieve the SHA1 digest and the list of specfiles used to
@@ -135,7 +134,7 @@ extern int selabel_lookup_best_match_raw(struct selabel_handle *rec, char **con,
  *
  * Return %0 on success, -%1 with @errno set on failure.
  */
-extern int selabel_digest(struct selabel_handle *rec, unsigned char **digest,
+extern int selabel_digest(struct selabel_handle *handle, unsigned char **digest,
 			  size_t *digest_len, char ***specfiles,
 			  size_t *num_specfiles);
 
@@ -149,7 +148,7 @@ enum selabel_cmp_result {
 /**
  * selabel_cmp - Compare two label configurations.
  * @h1: handle for the first label configuration
- * @h2: handle for the first label configuration
+ * @h2: handle for the second label configuration
  *
  * Compare two label configurations.
  * Return %SELABEL_SUBSET if @h1 is a subset of @h2, %SELABEL_EQUAL

@@ -379,7 +379,7 @@ extern int avc_compute_member(security_id_t ssid, security_id_t tsid,
  *
  * Register a callback function for events in the set @events
  * related to the SID pair (@ssid, @tsid) and
- * and the permissions @perms, interpreting
+ * the permissions @perms, interpreting
  * @perms based on @tclass.  Returns %0 on success or
  * -%1 if insufficient memory exists to add the callback.
  */
