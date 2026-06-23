@@ -13,6 +13,8 @@
 #include "mapping.h"
 #include "selinux_internal.h"
 
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
+
 /*
  * Class and permission mappings
  */
@@ -79,25 +81,22 @@ int selinux_set_mapping(const struct security_class_mapping *map)
 			continue;
 		}
 
-		k = 0;
-		while (p_in->perms[k]) {
+		for (k = 0; k < ARRAY_SIZE(p_out->perms) && p_in->perms[k];
+		     k++) {
 			/* An empty permission string skips ahead */
-			if (!*p_in->perms[k]) {
-				k++;
+			if (!*p_in->perms[k])
 				continue;
-			}
 			p_out->perms[k] =
 				string_to_av_perm(p_out->value, p_in->perms[k]);
 			if (!p_out->perms[k]) {
 				selinux_log(
 					SELINUX_INFO,
-					"SELinux:  Permission %s in class %s not defined in policy.\n",
+					"SELinux: Permission %s in class %s not defined in policy.\n",
 					p_in->perms[k], p_in->name);
 				if (reject)
 					goto err2;
 				print_unknown_handle = true;
 			}
-			k++;
 		}
 		p_out->num_perms = k;
 	}
