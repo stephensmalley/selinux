@@ -343,6 +343,22 @@ static void memzero(void *ptr, size_t size)
 	}
 }
 
+/* Compare two crypt() strings without an early exit on the first mismatching
+ * byte, so the number of matching leading bytes is not leaked via timing. */
+static int hash_equal(const char *computed, const char *stored)
+{
+	size_t clen = strlen(computed);
+	size_t slen = strlen(stored);
+	volatile unsigned char diff = (clen != slen);
+	size_t i;
+
+	for (i = 0; i < slen; i++)
+		diff |= (unsigned char)computed[clen ? i % clen : 0] ^
+			(unsigned char)stored[i];
+
+	return diff == 0;
+}
+
 /* authenticate_via_shadow_passwd()
  *
  * in:     uname - the calling user's user name
@@ -388,7 +404,7 @@ static int authenticate_via_shadow_passwd(const char *uname)
 		return 0;
 	}
 
-	ret = !strcmp(encrypted_password_s, p_shadow_line->sp_pwdp);
+	ret = hash_equal(encrypted_password_s, p_shadow_line->sp_pwdp);
 	memzero(encrypted_password_s, strlen(encrypted_password_s));
 	return ret;
 }
