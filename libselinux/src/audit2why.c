@@ -49,10 +49,17 @@ static sidtab_t sidtab;
 static int load_booleans(const sepol_bool_t *boolean,
 			 void *arg __attribute__((__unused__)))
 {
-	boollist[boolcnt] = malloc(sizeof(struct boolean_t));
-	boollist[boolcnt]->name = strdup(sepol_bool_get_name(boolean));
-	boollist[boolcnt]->active = sepol_bool_get_value(boolean);
-	boolcnt++;
+	struct boolean_t *b = malloc(sizeof(struct boolean_t));
+
+	if (!b)
+		return -1;
+	b->name = strdup(sepol_bool_get_name(boolean));
+	if (!b->name) {
+		free(b);
+		return -1;
+	}
+	b->active = sepol_bool_get_value(boolean);
+	boollist[boolcnt++] = b;
 	return 0;
 }
 
