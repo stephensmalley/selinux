@@ -62,7 +62,7 @@ static int find_default_type(FILE *fp, const char *role, char **type)
 		return -1;
 	}
 
-	t = strndup(ptr, strlen(buf) - len - 1);
+	t = strdup(ptr);
 	if (!t)
 		return -1;
 	*type = t;
