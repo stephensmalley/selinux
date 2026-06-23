@@ -732,20 +732,15 @@ static inline int send_audit_message(int success __attribute__((unused)),
  * in permissive mode.
  */
 static int relabel_tty(const char *ttyn, const char *new_context,
-		       char **tty_context, char **new_tty_context)
+		       char **tty_context, char **new_tty_context,
+		       int enforcing)
 {
 	int fd, rc;
-	int enforcing = security_getenforce();
 	char *tty_con = NULL;
 	char *new_tty_con = NULL;
 
 	if (!ttyn)
 		return 0;
-
-	if (enforcing < 0) {
-		fprintf(stderr, _("Could not determine enforcing mode.\n"));
-		return -1;
-	}
 
 	/* Re-open TTY descriptor */
 	fd = open(ttyn, O_RDWR | O_NONBLOCK);
@@ -856,7 +851,8 @@ skip_relabel:
 static int parse_command_line_arguments(int argc, char **argv, char *ttyn,
 					const char *old_context,
 					char **new_context,
-					int *preserve_environment)
+					int *preserve_environment,
+					int enforcing)
 {
 	int flag_index; /* flag index in argv[] */
 	int clflag; /* holds codes for command line flags */
@@ -928,6 +924,10 @@ static int parse_command_line_arguments(int argc, char **argv, char *ttyn,
 						return -1;
 					}
 					freecon(tty_con);
+				} else if (enforcing) {
+					fprintf(stderr,
+						_("Error: could not determine the security context of the terminal, not allowed to change levels\n"));
+					return -1;
 				}
 			}
 
@@ -1093,6 +1093,7 @@ int main(int argc, char *argv[])
 	int fd;
 	pid_t childPid = 0;
 	char *shell_argv0 = NULL;
+	int enforcing;
 	int rc;
 
 #ifdef USE_PAM
@@ -1139,7 +1140,8 @@ int main(int argc, char *argv[])
 		return -1;
 	}
 
-	if (security_getenforce() < 0) {
+	enforcing = security_getenforce();
+	if (enforcing < 0) {
 		fprintf(stderr, _("Could not determine enforcing mode.\n"));
 		return -1;
 	}
@@ -1162,7 +1164,8 @@ int main(int argc, char *argv[])
 	}
 
 	if (parse_command_line_arguments(argc, argv, ttyn, old_context,
-					 &new_context, &preserve_environment))
+					 &new_context, &preserve_environment,
+					 enforcing))
 		return -1;
 
 	/*
@@ -1226,7 +1229,7 @@ int main(int argc, char *argv[])
 	 * Once we authenticate the user, we know that we want to proceed with
 	 * the action. Prior to this point, no changes are made the to system.
 	 */
-	fd = relabel_tty(ttyn, new_context, &tty_context, &new_tty_context);
+	fd = relabel_tty(ttyn, new_context, &tty_context, &new_tty_context, enforcing);
 	if (fd < 0)
 		goto err_close_pam;
 
