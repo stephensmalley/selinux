@@ -305,6 +305,8 @@ int getseuser(const char *username, const char *service, char **r_seuser,
 		if (strncmp(buffer, "*:", 2) == 0) {
 			free(rec);
 			rec = strdup(buffer);
+			if (!rec)
+				goto err;
 			continue;
 		}
 		if (!service)
@@ -314,6 +316,8 @@ int getseuser(const char *username, const char *service, char **r_seuser,
 		    (buffer[len] == ':')) {
 			free(rec);
 			rec = strdup(buffer);
+			if (!rec)
+				goto err;
 			break;
 		}
 	}
