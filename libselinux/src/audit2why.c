@@ -376,6 +376,9 @@ static PyObject *analyze(PyObject *self __attribute__((unused)), PyObject *args)
 
 		/* make it a string */
 		permstr = _PyUnicode_AsString(strObj);
+		if (!permstr)
+			/* not a string; exception already set */
+			return NULL;
 
 		rc = sepol_string_to_av_perm(tclass, permstr, &perm);
 		if (rc < 0)
