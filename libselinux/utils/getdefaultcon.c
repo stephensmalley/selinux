@@ -114,7 +114,8 @@ int main(int argc, char **argv)
 
 	if (verbose) {
 		printf("%s: %s from %s %s %s %s -> %s\n", argv[0], user,
-		       cur_context, seuser, role, level, usercon);
+		       cur_context, seuser, role ? role : "-",
+		       level ? level : "-", usercon);
 	} else {
 		printf("%s\n", usercon);
 	}
