@@ -1232,12 +1232,14 @@ int main(int argc, char *argv[])
 		int status = 0;
 
 		do {
-			pid = wait(&status);
+			pid = waitpid(childPid, &status, 0);
 		} while (pid < 0 && errno == EINTR);
 
 		/* Preserve child exit status, unless there is another error. */
 		if (WIFEXITED(status))
 			exit_code = WEXITSTATUS(status);
+		else if (WIFSIGNALED(status))
+			exit_code = 128 + WTERMSIG(status);
 
 		if (restore_tty_label(fd, ttyn, tty_context, new_tty_context)) {
 			fprintf(stderr, _("Unable to restore tty label...\n"));
