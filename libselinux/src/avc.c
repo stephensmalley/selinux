@@ -175,7 +175,7 @@ static int avc_init_internal(const char *prefix,
 	if (rc) {
 		avc_log(SELINUX_ERROR, "%s:  unable to initialize SID table\n",
 			avc_prefix);
-		goto out;
+		goto err_locks;
 	}
 
 	avc_audit_buf = (char *)avc_malloc(AVC_AUDIT_BUFSIZE);
@@ -183,7 +183,7 @@ static int avc_init_internal(const char *prefix,
 		avc_log(SELINUX_ERROR, "%s:  unable to allocate audit buffer\n",
 			avc_prefix);
 		rc = -1;
-		goto out;
+		goto err_sidtab;
 	}
 
 	for (i = 0; i < AVC_CACHE_MAXNODES; i++) {
@@ -205,7 +205,7 @@ static int avc_init_internal(const char *prefix,
 			avc_log(SELINUX_ERROR,
 				"%s:  could not determine enforcing mode: %m\n",
 				avc_prefix);
-			goto out;
+			goto err_audit_buf;
 		}
 		avc_enforcing = rc;
 	}
@@ -215,10 +215,24 @@ static int avc_init_internal(const char *prefix,
 		avc_log(SELINUX_ERROR,
 			"%s: could not open selinux status page: %d (%m)\n",
 			avc_prefix, errno);
-		goto out;
+		goto err_audit_buf;
 	}
 	avc_running = 1;
-out:
+	return rc;
+
+err_audit_buf:
+	while (avc_node_freelist) {
+		new = avc_node_freelist;
+		avc_node_freelist = new->next;
+		avc_free(new);
+	}
+	avc_free(avc_audit_buf);
+	avc_audit_buf = NULL;
+err_sidtab:
+	sidtab_destroy(&avc_sidtab);
+err_locks:
+	avc_free_lock(avc_lock);
+	avc_free_lock(avc_log_lock);
 	return rc;
 }
 
