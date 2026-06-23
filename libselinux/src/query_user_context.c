@@ -21,10 +21,8 @@ static int context_menu(char **list)
 
 	while ((choice < 1) || (choice > i)) {
 		printf("Enter number of choice: ");
-		fflush(stdin);
 		if (fgets(response, sizeof(response), stdin) == NULL)
 			continue;
-		fflush(stdin);
 		choice = strtol(response, NULL, 10);
 	}
 
@@ -47,10 +45,8 @@ int query_user_context(char **list, char **usercon)
 	printf("\nYour default context is %s.\n", list[0]);
 	if (list[1]) {
 		printf("Do you want to choose a different one? [n]");
-		fflush(stdin);
 		if (fgets(response, sizeof(response), stdin) == NULL)
 			return -1;
-		fflush(stdin);
 
 		if ((response[0] == 'y') || (response[0] == 'Y')) {
 			choice = context_menu(list);
@@ -81,10 +77,8 @@ static void get_field(const char *fieldstr, char *newfield, int newfieldlen)
 
 	while (!done) { /* Keep going until we get a value for the field */
 		printf("\tEnter %s ", fieldstr);
-		fflush(stdin);
 		if (fgets(newfield, newfieldlen, stdin) == NULL)
 			continue;
-		fflush(stdin);
 		if (newfield[0] && newfield[strlen(newfield) - 1] == '\n')
 			newfield[strlen(newfield) - 1] = '\0';
 
