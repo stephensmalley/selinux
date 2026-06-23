@@ -560,12 +560,16 @@ static struct regex_data *regex_data_create(void)
 void regex_format_error(struct regex_error_data const *error_data, char *buffer,
 			size_t buf_size)
 {
-	unsigned the_end_length = buf_size > 4 ? 4 : buf_size;
-	char *ptr = &buffer[buf_size - the_end_length];
+	unsigned the_end_length;
+	char *ptr;
 	int rc = 0;
 	size_t pos = 0;
+
 	if (!buffer || !buf_size)
 		return;
+
+	the_end_length = buf_size > 4 ? 4 : buf_size;
+	ptr = &buffer[buf_size - the_end_length];
 	rc = snprintf(buffer, buf_size, "REGEX back-end error: ");
 	if (rc < 0)
 		/*
