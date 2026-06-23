@@ -46,11 +46,16 @@ static struct avc_t *avc = NULL;
 
 static sidtab_t sidtab;
 
-static int load_booleans(const sepol_bool_t *boolean,
-			 void *arg __attribute__((__unused__)))
+static int load_booleans(const sepol_bool_t *boolean, void *arg)
 {
-	struct boolean_t *b = malloc(sizeof(struct boolean_t));
+	const unsigned int *boolmax = arg;
+	struct boolean_t *b;
 
+	/* Guard against writing past the array sized by sepol_bool_count(). */
+	if ((unsigned int)boolcnt >= *boolmax)
+		return -1;
+
+	b = malloc(sizeof(struct boolean_t));
 	if (!b)
 		return -1;
 	b->name = strdup(sepol_bool_get_name(boolean));
@@ -73,7 +78,12 @@ static int check_booleans(struct boolean_t **bools)
 	sepol_bool_key_t *key = NULL;
 	sepol_bool_t *boolean = NULL;
 	int fcnt = 0;
-	int *foundlist = calloc(boolcnt, sizeof(int));
+	int *foundlist;
+
+	if (boolcnt == 0)
+		return 0;
+
+	foundlist = calloc(boolcnt, sizeof(int));
 	if (!foundlist) {
 		PyErr_SetString(PyExc_MemoryError, "Out of memory\n");
 		return fcnt;
@@ -116,7 +126,7 @@ static int check_booleans(struct boolean_t **bools)
 				"Error during access vector computation, skipping...");
 			PyErr_SetString(PyExc_RuntimeError, errormsg);
 
-			sepol_bool_free(boolean);
+			/* boolean is freed by the post-loop cleanup */
 			break;
 		} else {
 			if (!reason) {
@@ -158,6 +168,11 @@ static int check_booleans(struct boolean_t **bools)
 		for (i = 0; i < fcnt; i++) {
 			int ctr = foundlist[i];
 			b[i].name = strdup(boollist[ctr]->name);
+			if (!b[i].name) {
+				PyErr_SetString(PyExc_MemoryError,
+						"Out of memory\n");
+				break;
+			}
 			b[i].active = !boollist[ctr]->active;
 		}
 	}
@@ -263,13 +278,16 @@ static int __policy_init(const char *init_path)
 		goto err;
 	}
 
-	boollist = calloc(cnt, sizeof(*boollist));
-	if (!boollist) {
-		PyErr_SetString(PyExc_MemoryError, "Out of memory\n");
-		goto err;
-	}
+	if (cnt > 0) {
+		boollist = calloc(cnt, sizeof(*boollist));
+		if (!boollist) {
+			PyErr_SetString(PyExc_MemoryError, "Out of memory\n");
+			goto err;
+		}
 
-	sepol_bool_iterate(avc->handle, avc->policydb, load_booleans, NULL);
+		sepol_bool_iterate(avc->handle, avc->policydb, load_booleans,
+				   &cnt);
+	}
 
 	/* Initialize the sidtab for subsequent use by sepol_context_to_sid
 	   and sepol_compute_av_reason. */
