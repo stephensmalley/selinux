@@ -1049,6 +1049,28 @@ static int set_signal_handles(void)
 	return 0;
 }
 
+/**
+ * Ensure the standard file descriptors (stdin, stdout, stderr) are open.
+ * If the caller closed any of them, attach /dev/null so that a descriptor
+ * newrole opens later cannot be silently assigned fd 0, 1 or 2 and then be
+ * clobbered (or have its content disclosed) by stdio operations.
+ *
+ * Returns zero on success, non-zero otherwise.
+ */
+static int sanitize_std_fds(void)
+{
+	int fd;
+
+	for (fd = STDIN_FILENO; fd <= STDERR_FILENO; fd++) {
+		if (fcntl(fd, F_GETFD) != -1 || errno != EBADF)
+			continue;
+		if (open("/dev/null", O_RDWR) != fd)
+			return -1;
+	}
+
+	return 0;
+}
+
 /************************************************************************
  *
  * All code used for both PAM and shadow passwd goes in this section.
@@ -1090,6 +1112,11 @@ int main(int argc, char *argv[])
 	 * if it makes sense to continue to run newrole, and setting up
 	 * a scrubbed environment.
 	 */
+	if (sanitize_std_fds()) {
+		fprintf(stderr,
+			_("Failed to sanitize standard file descriptors\n"));
+		return -1;
+	}
 	if (drop_capabilities(FALSE)) {
 		perror(_("Sorry, newrole failed to drop capabilities\n"));
 		return -1;
