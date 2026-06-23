@@ -61,7 +61,9 @@ int security_compute_user_raw(const char *scon, const char *user, char ***con)
 		goto out;
 	}
 
-	ary = malloc((nel + 1) * sizeof(char *));
+	/* calloc() rejects the (nel + 1) * sizeof(char *) multiplication
+	 * overflow that a bogus, very large nel would otherwise wrap to 0. */
+	ary = calloc((size_t)nel + 1, sizeof(char *));
 	if (!ary) {
 		ret = -1;
 		goto out;
@@ -69,6 +71,14 @@ int security_compute_user_raw(const char *scon, const char *user, char ***con)
 
 	ptr = buf + strlen(buf) + 1;
 	for (i = 0; i < nel; i++) {
+		/* Bound the walk to the data actually read into buf, in case
+		 * nel claims more entries than the reply contains. */
+		if (ptr >= buf + size) {
+			freeconary(ary);
+			errno = EINVAL;
+			ret = -1;
+			goto out;
+		}
 		ary[i] = strdup(ptr);
 		if (!ary[i]) {
 			freeconary(ary);
