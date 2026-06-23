@@ -850,6 +850,9 @@ int avc_compute_create(security_id_t ssid, security_id_t tsid,
 	*newsid = NULL;
 	avc_entry_ref_init(&aeref);
 
+	/* avc_init needs to be called before this function */
+	assert(avc_running);
+
 	avc_get_lock(avc_lock);
 
 	/* check for a cached entry */
