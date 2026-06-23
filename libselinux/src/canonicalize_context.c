@@ -44,13 +44,15 @@ int security_canonicalize_context_raw(const char *con, char **canoncon)
 
 	memset(buf, 0, size);
 	ret = read(fd, buf, size - 1);
-	if (ret < 0 && errno == EINVAL) {
+	if (ret < 0) {
 		/* Fall back to the original context for kernels
 		   that do not support the extended interface. */
-		strncpy(buf, con, size);
+		if (errno != EINVAL)
+			goto out;
+		*canoncon = strdup(con);
+	} else {
+		*canoncon = strdup(buf);
 	}
-
-	*canoncon = strdup(buf);
 	if (!(*canoncon)) {
 		ret = -1;
 		goto out;
