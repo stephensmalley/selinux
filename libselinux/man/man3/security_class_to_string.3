@@ -86,6 +86,16 @@ A class or access vector argument is not recognized by the currently loaded poli
 .B ENOMEM
 An attempt to allocate memory failed.
 .
+.SH "THREAD SAFETY"
+These functions share a process-wide class/permission cache that is
+serialized internally. The string pointers returned by
+.BR security_class_to_string ()
+and
+.BR security_av_perm_to_string ()
+remain valid across concurrent calls to
+.BR selinux_flush_class_cache (3)
+for the lifetime of the process.
+.
 .SH "AUTHOR"
 Eamon Walsh <ewalsh@tycho.nsa.gov>
 .

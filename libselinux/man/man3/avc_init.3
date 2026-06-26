@@ -153,7 +153,18 @@ The
 .B func_free_lock
 callback should destroy
 .IR lock ,
-freeing any resources associated with it.  The default behavior is not to perform any locking.  Note that undefined behavior may result if threading is used without appropriate locking.
+freeing any resources associated with it.
+If
+.I lock_callbacks
+is NULL (as it always is for
+.BR avc_open (3)),
+the AVC uses an internal
+.BR pthread_mutex_t
+per lock.
+If an
+.B avc_lock_callback
+structure is supplied, all four callbacks must be non-NULL;
+supplying a subset is not supported.
 .
 .SH "KERNEL STATUS PAGE"
 Linux kernel version 2.6.37 supports the SELinux kernel status page, enabling userspace applications to
@@ -195,7 +206,7 @@ events will have the same results as for the status page implementation, but all
 
 By default,
 .BR avc_open (3)
-does not set threading or locking callbacks. In the fallback case, the userspace AVC checks for new netlink messages at the start of each permission query. If threading and locking callbacks are passed to
+does not set threading callbacks. In the fallback case, the userspace AVC checks for new netlink messages at the start of each permission query. If threading callbacks are passed to
 .BR avc_init (),
 a dedicated thread will be started to listen on the netlink socket.  This may increase performance in the absence of the status page and will ensure that log messages are generated immediately rather than at the time of the next permission query.
 .

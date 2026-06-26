@@ -116,6 +116,35 @@ The
 .I seqno
 argument is the current sequential number of the policy generation in the system.
 .
+.SH "NOTES"
+Callbacks run while a library-internal lock is held and must not call back
+into the interfaces that lock protects:
+.B SELINUX_CB_LOG
+and
+.B SELINUX_CB_AUDIT
+are invoked from
+.BR avc_audit (3)
+with the audit-buffer lock held and must not call any function that reaches
+the userspace AVC (e.g.
+.BR avc_has_perm (3),
+.BR selinux_check_access (3));
+.B SELINUX_CB_SETENFORCE
+and
+.B SELINUX_CB_POLICYLOAD
+are invoked from
+.BR selinux_status_updated (3)
+with the status lock held and must not call
+.BR selinux_status_updated (3),
+.BR selinux_status_getenforce (3)
+or
+.BR selinux_status_policyload (3);
+.B SELINUX_CB_VALIDATE
+is invoked from
+.BR selabel_lookup (3)
+with a per-specification lock held and must not call
+.BR selabel_lookup (3)
+on the same handle.
+.
 .SH "RETURN VALUE"
 None.
 .

@@ -181,10 +181,24 @@ function.
 .SH "RETURN VALUE"
 Returns zero on success or \-1 on error.
 .
-.SH "CAVEATS"
+.SH "THREAD SAFETY"
 .sp
-These functions are not thread-safe, you have to protect them from
-concurrent calls using exclusive locks when multiple threads are executing.
+.BR selinux_check_access ()
+may be called concurrently from multiple threads; the underlying
+AVC and SELinux status page interfaces serialize their shared
+state internally. See the re-entrancy constraints for
+.B SELINUX_CB_LOG
+/
+.B SELINUX_CB_AUDIT
+/
+.B SELINUX_CB_SETENFORCE
+/
+.B SELINUX_CB_POLICYLOAD
+in
+.BR selinux_set_callback (3).
+.
+The remaining security_compute_* ()
+functions are direct kernel queries with no shared userspace state.
 .
 .SH "SEE ALSO"
 .BR string_to_security_class (3),
