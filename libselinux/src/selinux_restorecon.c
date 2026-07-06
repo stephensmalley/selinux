@@ -25,7 +25,11 @@
 #include <sys/vfs.h>
 #include <sys/statvfs.h>
 #include <sys/utsname.h>
+#include <sys/syscall.h>
 #include <linux/magic.h>
+#ifdef __NR_openat2
+#include <linux/openat2.h>
+#endif
 #include <libgen.h>
 #include <syslog.h>
 #include <assert.h>
@@ -1113,6 +1117,25 @@ static int safe_open(const char *path, struct stat *sb)
 		errno = ENOENT;
 		return -1;
 	}
+
+#ifdef __NR_openat2
+	struct open_how how = {
+		.flags = O_PATH | O_NOFOLLOW | O_CLOEXEC,
+		.resolve = RESOLVE_NO_SYMLINKS | RESOLVE_NO_MAGICLINKS,
+	};
+
+	nfd = syscall(__NR_openat2, AT_FDCWD, path, &how, sizeof(how));
+	if (nfd >= 0) {
+		if (fstat(nfd, sb) < 0) {
+			close(nfd);
+			return -1;
+		}
+		return nfd;
+	}
+
+	if (errno != ENOSYS && errno != EINVAL)
+		return -1;
+#endif
 
 	copy = strdup(path);
 	if (!copy)
