@@ -177,7 +177,17 @@ may be executed in the context of the netlink handler thread.  This will likely 
 
 Support for dynamic revocation and retained permissions is mostly unimplemented in the SELinux kernel module.  The only security event that currently gets exercised is
 .BR AVC_CALLBACK_RESET .
-.
+
+.B AVC_CALLBACK_RESET
+callbacks driven by
+.BR selinux_status_updated (3),
+(the default when no netlink handler thread is installed) run with the
+status lock held and must not call
+.BR selinux_status_updated (3),
+.BR selinux_status_getenforce (3)
+or
+.BR selinux_status_policyload (3).
+
 .SH "AUTHOR"
 Eamon Walsh <ewalsh@tycho.nsa.gov>
 .

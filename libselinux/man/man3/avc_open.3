@@ -81,6 +81,26 @@ and
 .B policyload
 events will have the same results as for the status page implementation, but all status update checks will now require a system call.
 .
+.SH "THREAD SAFETY"
+The userspace AVC initialized by
+.BR avc_open (3)
+protects its shared state with internal pthread mutexes by default, so
+.BR avc_has_perm (3),
+.BR avc_context_to_sid (3),
+.BR avc_compute_create (3)
+and
+.BR selinux_check_access (3)
+may be called concurrently from multiple threads after a single
+.BR avc_open (3).
+The
+.B SELINUX_CB_LOG
+and
+.B SELINUX_CB_AUDIT
+callbacks (see
+.BR selinux_set_callback (3))
+are invoked while the audit-buffer lock is held and must not call back
+into the AVC.
+.
 .SH "RETURN VALUE"
 Functions with a return value return zero on success.  On error, \-1 is returned and
 .I errno

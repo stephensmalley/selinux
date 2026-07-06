@@ -83,6 +83,20 @@ with a return value return zero on success.  On error, \-1 is returned and
 .I errno
 is set appropriately.
 .
+.SH "NOTES"
+After
+.BR avc_netlink_acquire_fd (),
+the application owns the netlink socket.
+.BR avc_netlink_check_nb ()
+and
+.BR avc_netlink_loop()
+do not take the status lock that serializes
+.BR selinux_status_updated (3);
+the application is responsible for draining the socket from a single
+thread (or under its own lock), and should not mix direct netlink
+draining with concurrent calls to
+.BR selinux_status_updated (3).
+.
 .SH "AUTHOR"
 Originally KaiGai Kohei. Updated by Mike Palmiotto <mike.palmiotto@crunchydata.com>
 .

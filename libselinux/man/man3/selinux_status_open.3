@@ -92,10 +92,26 @@ On error, \-1 shall be returned.
 Any other functions with a return value shall return its characteristic
 value as described above, or \-1 on errors.
 .
-.SH "CAVEATS"
+.SH "THREAD SAFETY"
 .sp
-These functions are not thread-safe, you have to protect them from
-concurrent calls using exclusive locks when multiple threads are executing.
+.BR selinux_status_updated (),
+.BR selinux_status_getenforce ()
+and
+.BR selinux_status_policyload ()
+are serialized internally and may be called concurrently from
+multiple threads. For a given setenforce or policyload event the
+.B SELINUX_CB_SETENFORCE
+/
+.B SELINUX_CB_POLICYLOAD
+callbacks (see
+.BR selinux_set_callback(3))
+and any registered
+.B AVC_CALLBACK_RESET
+callbacks are invoked exactly once.
+.BR selinux_status_open ()
+and
+.BR selinux_status_close ()
+are not serialized against concurrent callers of the other functions.
 .
 .SH "SEE ALSO"
 .ad l
