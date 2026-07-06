@@ -342,16 +342,16 @@ int security_av_string(security_class_t tclass, access_vector_t av, char **res)
 	size_t len = 5;
 	access_vector_t tmp = av;
 	int rc = 0;
-	const char *str;
+	const char *perm[MAXVECTORS] = { NULL };
 	char *ptr;
 
 	/* first pass computes the required length */
 	for (i = 0; tmp; tmp >>= 1, i++) {
 		if (tmp & 1) {
-			str = security_av_perm_to_string(
+			perm[i] = security_av_perm_to_string(
 				tclass, av & (UINT32_C(1) << i));
-			if (str)
-				len += strlen(str) + 1;
+			if (perm[i])
+				len += strlen(perm[i]) + 1;
 		}
 	}
 
@@ -372,12 +372,8 @@ int security_av_string(security_class_t tclass, access_vector_t av, char **res)
 
 	ptr += sprintf(ptr, "{ ");
 	for (i = 0; tmp; tmp >>= 1, i++) {
-		if (tmp & 1) {
-			str = security_av_perm_to_string(
-				tclass, av & (UINT32_C(1) << i));
-			if (str)
-				ptr += sprintf(ptr, "%s ", str);
-		}
+		if ((tmp & 1) && perm[i])
+			ptr += sprintf(ptr, "%s ", perm[i]);
 	}
 	sprintf(ptr, "}");
 out:
