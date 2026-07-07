@@ -155,7 +155,6 @@ static int add_cil_file(const char *filename, struct cil_db *cdb)
 	file_size = filedata.st_size;
 
 	if (!file_size) {
-		fclose(file);
 		rc = 0;
 		goto exit;
 	}
