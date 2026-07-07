@@ -1229,7 +1229,8 @@ int main(int argc, char *argv[])
 	 * Once we authenticate the user, we know that we want to proceed with
 	 * the action. Prior to this point, no changes are made the to system.
 	 */
-	fd = relabel_tty(ttyn, new_context, &tty_context, &new_tty_context, enforcing);
+	fd = relabel_tty(ttyn, new_context, &tty_context, &new_tty_context,
+			 enforcing);
 	if (fd < 0)
 		goto err_close_pam;
 
