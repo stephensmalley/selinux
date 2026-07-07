@@ -22,6 +22,10 @@ Archives of the mailing list are available at https://lore.kernel.org/selinux.
 See the [SELinux Userspace wiki](https://github.com/SELinuxProject/selinux/wiki)
 for more information.
 
+Minimum Supported Kernel Version
+--------------------------------
+Linux v3.0 (for /sys/fs/selinux mount point directory)
+
 Installation
 ------------
 

@@ -81,54 +81,11 @@ int selinuxfs_exists(void)
 
 static void init_selinuxmnt(void)
 {
-	char *buf = NULL, *p;
-	FILE *fp = NULL;
-	size_t len;
-	ssize_t num;
-
 	if (selinux_mnt)
 		return;
 
 	if (verify_selinuxmnt(SELINUXMNT) == 0)
 		return;
-
-	if (verify_selinuxmnt(OLDSELINUXMNT) == 0)
-		return;
-
-	/* Drop back to detecting it the long way. */
-	if (!selinuxfs_exists())
-		goto out;
-
-	/* At this point, the usual spot doesn't have an selinuxfs so
-	 * we look around for it */
-	fp = fopen("/proc/mounts", "re");
-	if (!fp)
-		goto out;
-
-	__fsetlocking(fp, FSETLOCKING_BYCALLER);
-	while ((num = getline(&buf, &len, fp)) != -1) {
-		char *tmp;
-		p = strchr(buf, ' ');
-		if (!p)
-			goto out;
-		p++;
-		tmp = strchr(p, ' ');
-		if (!tmp)
-			goto out;
-		if (!strncmp(tmp + 1, SELINUXFS " ", strlen(SELINUXFS) + 1)) {
-			*tmp = '\0';
-			break;
-		}
-	}
-
-	/* If we found something, dup it */
-	if (num > 0)
-		verify_selinuxmnt(p);
-
-out:
-	free(buf);
-	if (fp)
-		fclose(fp);
 }
 
 void fini_selinuxmnt(void)

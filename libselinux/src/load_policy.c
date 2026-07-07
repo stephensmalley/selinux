@@ -307,12 +307,6 @@ int selinux_init_load_policy(int *enforce)
 		  NULL) == 0 ||
 	    errno == EBUSY) {
 		mntpoint = SELINUXMNT;
-	} else {
-		/* check old mountpoint */
-		if (mount(SELINUXFS, OLDSELINUXMNT, SELINUXFS, 0, NULL) == 0 ||
-		    errno == EBUSY) {
-			mntpoint = OLDSELINUXMNT;
-		}
 	}
 
 	if (!mntpoint) {
