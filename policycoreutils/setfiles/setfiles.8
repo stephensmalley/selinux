@@ -8,6 +8,7 @@ setfiles \- set SELinux file security contexts.
 .IR policy ]
 .RB [ \-C ]
 .RB [ \-d ]
+.RB [ \-j ]
 .RB [ \-l ]
 .RB [ \-m ]
 .RB [ \-n ]
@@ -116,6 +117,10 @@ Set or update any directory SHA1 digests. Use this option to
 enable usage of the
 .IR security.sehash
 extended attribute.
+.TP
+.B \-j
+skip files with multiple hard links to avoid unintentional mislabeling,
+particularly when relabeling user-writable directories.
 .TP
 .B \-l
 log changes in file labels to syslog.

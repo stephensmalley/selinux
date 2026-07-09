@@ -10,6 +10,7 @@ restorecon \- restore file(s) default SELinux security contexts.
 .RB [ \-p ]
 .RB [ \-v ]
 .RB [ \-i ]
+.RB [ \-j ]
 .RB [ \-F ]
 .RB [ \-U ]
 .RB [ \-W ]
@@ -30,6 +31,7 @@ restorecon \- restore file(s) default SELinux security contexts.
 .RB [ \-p ]
 .RB [ \-v ]
 .RB [ \-i ]
+.RB [ \-j ]
 .RB [ \-F ]
 .RB [ \-U ]
 .RB [ \-W ]
@@ -87,6 +89,10 @@ contains a list of files to be processed. Use
 .RB \*(lq \- \*(rq
 for
 .BR stdin .
+.TP
+.B \-j
+skip files with multiple hard links to avoid unintentional mislabeling,
+particularly when relabeling user-writable directories.
 .TP
 .B \-F
 Force reset of context to match file_context for customizable files, and the

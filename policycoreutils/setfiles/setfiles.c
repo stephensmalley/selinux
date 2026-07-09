@@ -145,8 +145,8 @@ int main(int argc, char **argv)
 	size_t buf_len, nthreads = 1;
 	const char *base;
 	int errors = 0;
-	const char *ropts = "ce:f:hiIDlmno:pqrsvFURW0xT:";
-	const char *sopts = "c:de:f:hiIDlmno:pqr:svACEFUR:W0T:";
+	const char *ropts = "ce:f:hijIDlmno:pqrsvFURW0xT:";
+	const char *sopts = "c:de:f:hijIDlmno:pqr:svACEFUR:W0T:";
 	const char *opts;
 	union selinux_callback cb;
 	long unsigned skipped_errors;
@@ -275,6 +275,10 @@ int main(int argc, char **argv)
 			break;
 		case 'i':
 			r_opts.ignore_noent = SELINUX_RESTORECON_IGNORE_NOENTRY;
+			break;
+		case 'j':
+			r_opts.skip_multilink =
+				SELINUX_RESTORECON_SKIP_MULTILINK;
 			break;
 		case 'I': /* Force label check by ignoring directory digest. */
 			r_opts.ignore_digest = SELINUX_RESTORECON_IGNORE_DIGEST;

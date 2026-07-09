@@ -38,6 +38,7 @@ struct restore_opts {
 	unsigned int conflict_error;
 	unsigned int count_errors;
 	unsigned int count_relabeled;
+	unsigned int skip_multilink;
 	/* restorecon_flags holds | of above for restore_init() */
 	unsigned int restorecon_flags;
 	char *rootpath;
