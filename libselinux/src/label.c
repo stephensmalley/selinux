@@ -4,6 +4,7 @@
  * Author : Eamon Walsh <ewalsh@epoch.ncsc.mil>
  */
 
+#include <assert.h>
 #include <sys/types.h>
 #include <ctype.h>
 #include <errno.h>
@@ -45,13 +46,18 @@ typedef int (*selabel_initfunc)(struct selabel_handle *rec,
 				const struct selinux_opt *opts, unsigned nopts);
 
 static const selabel_initfunc initfuncs[] = {
-	&selabel_file_init,
-	CONFIG_MEDIA_BACKEND(selabel_media_init),
-	CONFIG_X_BACKEND(selabel_x_init),
-	CONFIG_DB_BACKEND(selabel_db_init),
-	CONFIG_ANDROID_BACKEND(selabel_property_init),
-	CONFIG_ANDROID_BACKEND(selabel_service_init),
+	[SELABEL_CTX_FILE] = &selabel_file_init,
+	[SELABEL_CTX_MEDIA] = CONFIG_MEDIA_BACKEND(selabel_media_init),
+	[SELABEL_CTX_X] = CONFIG_X_BACKEND(selabel_x_init),
+	[SELABEL_CTX_DB] = CONFIG_DB_BACKEND(selabel_db_init),
+	[SELABEL_CTX_ANDROID_PROP] =
+		CONFIG_ANDROID_BACKEND(selabel_property_init),
+	[SELABEL_CTX_ANDROID_SERVICE] =
+		CONFIG_ANDROID_BACKEND(selabel_service_init),
 };
+
+static_assert(ARRAY_SIZE(initfuncs) == _SELABEL_CTX_NUM,
+	      "initfuncs array size does not match _SELABEL_CTX_NUM");
 
 static inline struct selabel_digest *
 selabel_is_digest_set(const struct selinux_opt *opts, unsigned n)

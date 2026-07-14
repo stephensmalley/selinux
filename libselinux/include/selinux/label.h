@@ -37,6 +37,11 @@ struct selabel_handle;
 #define SELABEL_CTX_ANDROID_PROP 4
 /* Android service contexts */
 #define SELABEL_CTX_ANDROID_SERVICE 5
+/*
+ * Total number of context backends. When adding a new backend,
+ * please increase this value.
+ */
+#define _SELABEL_CTX_NUM 6
 
 /*
  * Available options
