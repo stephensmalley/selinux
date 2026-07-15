@@ -618,11 +618,19 @@ static int read_from_pipe_to_data(semanage_handle_t *sh, size_t initial_len,
 				  "libsemanage.semanage_pipe_data: ",          \
 				  strlen("libsemanage.semanage_pipe_data: ")); \
 		n = snprintf(buf, sizeof(buf), __VA_ARGS__);                   \
-		(void)!write_full(err_fd[PIPE_WRITE], buf, n);                 \
+		if (n > 0) {                                                   \
+			if ((size_t)n >= sizeof(buf))                          \
+				n = sizeof(buf) - 1;                           \
+			(void)!write_full(err_fd[PIPE_WRITE], buf, (size_t)n); \
+		}                                                              \
 		if (errsv) {                                                   \
 			errno = errsv;                                         \
 			n = snprintf(buf, sizeof(buf), " (%m).");              \
-			(void)!write_full(err_fd[PIPE_WRITE], buf, n);         \
+			if (n > 0) {                                           \
+				if ((size_t)n >= sizeof(buf))                  \
+					n = sizeof(buf) - 1;                   \
+				(void)!write_full(err_fd[PIPE_WRITE], buf, n); \
+			}                                                      \
 		}                                                              \
 		(void)!write_full(err_fd[PIPE_WRITE], "\n", strlen("\n"));     \
 		(void)!fsync(err_fd[PIPE_WRITE]);                              \
