@@ -3,6 +3,7 @@
  */
 
 #include <errno.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -35,8 +36,7 @@ static security_class_t current_mapping_size = 0;
 int selinux_set_mapping(const struct security_class_mapping *map)
 {
 	size_t size = sizeof(struct selinux_mapping);
-	security_class_t i, j;
-	unsigned k;
+	unsigned int i, j, k;
 	bool print_unknown_handle = false;
 	bool reject = (security_reject_unknown() == 1);
 	bool deny = (security_deny_unknown() == 1);
@@ -56,6 +56,10 @@ int selinux_set_mapping(const struct security_class_mapping *map)
 	i = 0;
 	while (map[i].name)
 		i++;
+	if (i >= USHRT_MAX) {
+		errno = EINVAL;
+		goto err;
+	}
 
 	/* Allocate space for the class records, plus one for class zero */
 	current_mapping = (struct selinux_mapping *)calloc(++i, size);
