@@ -115,7 +115,8 @@ static int user_base_parse(semanage_handle_t *handle, parse_info_t *info,
 			info->ptr++;
 
 		delim = *(info->ptr);
-		*(info->ptr)++ = '\0';
+		if (delim)
+			*(info->ptr)++ = '\0';
 
 		if (semanage_user_base_add_role(handle, user, start) < 0)
 			goto err;
