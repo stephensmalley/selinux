@@ -318,10 +318,17 @@ static catalog_t *db_init(const struct selinux_opt *opts, unsigned nopts,
 		 */
 		if (catalog->limit == catalog->nspec) {
 			size_t length;
-			unsigned int new_limit = 2 * catalog->limit;
+			unsigned int new_limit;
 			catalog_t *new_catalog;
 
-			length = sizeof(catalog_t) + new_limit * sizeof(spec_t);
+			if (catalog->limit > UINT_MAX / 2)
+				goto out_error;
+			new_limit = 2 * catalog->limit;
+			if (__builtin_mul_overflow(new_limit, sizeof(spec_t),
+						   &length) ||
+			    __builtin_add_overflow(length, sizeof(catalog_t),
+						   &length))
+				goto out_error;
 			new_catalog = realloc(catalog, length);
 			if (!new_catalog)
 				goto out_error;
