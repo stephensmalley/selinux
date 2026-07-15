@@ -963,7 +963,9 @@ FUZZ_EXTERN int load_mmap(FILE *fp, const size_t len,
 		 * Skip the entry and conclude that we have
 		 * a mismatch, which is not fatal.
 		 */
-		next_entry(NULL, mmap_area, pcre_ver_len);
+		rc = next_entry(NULL, mmap_area, pcre_ver_len);
+		if (rc < 0)
+			goto err;
 		goto end_version_check;
 	}
 
@@ -1005,7 +1007,9 @@ end_version_check:
 		 * Skip the entry and conclude that we have
 		 * a mismatch, which is not fatal.
 		 */
-		next_entry(NULL, mmap_area, pcre_arch_len);
+		rc = next_entry(NULL, mmap_area, pcre_arch_len);
+		if (rc < 0)
+			goto err;
 		goto end_arch_check;
 	}
 
