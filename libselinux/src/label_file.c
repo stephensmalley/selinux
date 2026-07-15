@@ -1240,8 +1240,20 @@ static FILE *open_file(const char *path, const char *suffix, char *save_path,
 		return NULL;
 	}
 
-	memcpy(sb, &found->sb, sizeof(*sb));
-	return fopen(save_path, "re");
+	FILE *fp = fopen(save_path, "re");
+	if (!fp)
+		return NULL;
+
+	/*
+	 * Re-stat to ensure we use the same file size
+	 * as the file we just opened.
+	 */
+	if (fstat(fileno(fp), sb) < 0) {
+		fclose_errno_safe(fp);
+		return NULL;
+	}
+
+	return fp;
 }
 
 static int process_file(const char *path, const char *suffix,
