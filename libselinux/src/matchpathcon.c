@@ -212,7 +212,7 @@ typedef struct file_spec {
 #define HASH_BITS 16
 #define HASH_BUCKETS (1 << HASH_BITS)
 #define HASH_MASK (HASH_BUCKETS - 1)
-static file_spec_t *fl_head;
+static __thread file_spec_t *fl_head;
 
 /*
  * Try to add an association between an inode and
@@ -226,6 +226,11 @@ int matchpathcon_filespec_add(ino_t ino, int specind, const char *file)
 	file_spec_t *prevfl, *fl;
 	int h, ret;
 	struct stat sb;
+
+	if (specind < 0 || specind >= con_array_used) {
+		errno = EINVAL;
+		return -1;
+	}
 
 	if (!fl_head) {
 		fl_head = calloc(HASH_BUCKETS, sizeof(file_spec_t));
