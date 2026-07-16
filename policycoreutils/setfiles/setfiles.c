@@ -142,7 +142,7 @@ int main(int argc, char **argv)
 	const char *input_filename = NULL;
 	int use_input_file = 0;
 	char *buf = NULL, *endptr;
-	size_t buf_len, nthreads = 1;
+	size_t buf_len = 0, nthreads = 1;
 	const char *base;
 	int errors = 0;
 	const char *ropts = "ce:f:hijIDlmno:pqrsvFURW0xT:";
@@ -459,10 +459,14 @@ int main(int argc, char **argv)
 
 		delim = (null_terminated != 0) ? '\0' : '\n';
 		while ((len = getdelim(&buf, &buf_len, delim, f)) > 0) {
-			buf[len - 1] = '\0';
-			if (!strcmp(buf, "/"))
+			if (buf[len - 1] == delim)
+				buf[len - 1] = '\0';
+			if (!strcmp(buf, "/")) {
 				r_opts.mass_relabel =
 					SELINUX_RESTORECON_MASS_RELABEL;
+				r_opts.restorecon_flags |=
+					SELINUX_RESTORECON_MASS_RELABEL;
+			}
 			errors |= process_glob(buf, &r_opts, nthreads,
 					       &skipped_errors,
 					       &relabeled_files) < 0;
