@@ -371,7 +371,8 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "stdout can be written\n");
 #endif
 			ssize_t n = rb_write(&outbuf, STDOUT_FILENO);
-			if (n <= 0 && n != EINTR && n != EAGAIN)
+			if (n == 0 ||
+			    (n < 0 && errno != EINTR && errno != EAGAIN))
 				err_n_stdout++;
 #ifdef DEBUG
 			if (n >= 0)
@@ -387,7 +388,8 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "pty_master can be written\n");
 #endif
 			ssize_t n = rb_write(&inbuf, pty_master);
-			if (n <= 0 && n != EINTR && n != EAGAIN)
+			if (n == 0 ||
+			    (n < 0 && errno != EINTR && errno != EAGAIN))
 				err_n_wpty++;
 #ifdef DEBUG
 			if (n >= 0)
@@ -404,7 +406,8 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "stdin can be read\n");
 #endif
 			ssize_t n = rb_read(&inbuf, STDIN_FILENO);
-			if (n <= 0 && n != EINTR && n != EAGAIN)
+			if (n == 0 ||
+			    (n < 0 && errno != EINTR && errno != EAGAIN))
 				err_n_stdin++;
 #ifdef DEBUG
 			if (n >= 0)
@@ -420,7 +423,8 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "pty_master can be read\n");
 #endif
 			ssize_t n = rb_read(&outbuf, pty_master);
-			if (n <= 0 && n != EINTR && n != EAGAIN)
+			if (n == 0 ||
+			    (n < 0 && errno != EINTR && errno != EAGAIN))
 				err_n_rpty++;
 #ifdef DEBUG
 			if (n >= 0)
