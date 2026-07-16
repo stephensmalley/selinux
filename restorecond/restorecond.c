@@ -73,7 +73,7 @@ struct restore_opts r_opts;
 #include <selinux/selinux.h>
 
 int debug_mode = 0;
-int terminate = 0;
+volatile sig_atomic_t terminate = 0;
 int master_wd = -1;
 int run_as_user = 0;
 int foreground_mode = 0;

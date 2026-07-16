@@ -24,9 +24,11 @@
 #ifndef RESTORED_CONFIG_H
 #define RESTORED_CONFIG_H
 
+#include <signal.h>
+
 extern int debug_mode;
 extern const char *homedir;
-extern int terminate;
+extern volatile sig_atomic_t terminate;
 extern int master_wd;
 extern int run_as_user;
 
