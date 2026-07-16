@@ -1285,7 +1285,7 @@ static char *compute_raw_from_trans(const char *level, domain_t *domain)
 			  match, strlen(match));
 		base_classification_t *bc;
 		for (bc = domain->base_classifications; bc; bc = bc->next) {
-			if (!strcmp(bc->trans, match)) {
+			if (!strcasecmp(bc->trans, match)) {
 				log_debug(
 					" compute_raw_from_trans base classification %s matched %s\n",
 					level, bc->trans);
@@ -1443,7 +1443,7 @@ static char *compute_raw_from_trans(const char *level, domain_t *domain)
 								int wlen = strlen(
 									w->text);
 								if (plen >= wlen &&
-								    !strncmp(
+								    !strncasecmp(
 									    w->text,
 									    p,
 									    strlen(w->text))) {
