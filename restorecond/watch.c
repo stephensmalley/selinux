@@ -424,7 +424,7 @@ static void process_config(int fd, FILE *cfg)
 
 	while (getline(&line_buf, &len, cfg) > 0) {
 		char *buffer = line_buf;
-		while (isspace(*buffer))
+		while (isspace((unsigned char)*buffer))
 			buffer++;
 		if (buffer[0] == '#')
 			continue;
