@@ -206,7 +206,10 @@ int main(int argc, char **argv)
 	if (!pwd)
 		exitApp("getpwuid");
 
-	homedir = pwd->pw_dir;
+	homedir = strdup(pwd->pw_dir);
+	if (!homedir)
+		exitApp("strdup");
+
 	if (uid != 0) {
 		if (run_as_user)
 			return server(master_fd, user_watch_file);
