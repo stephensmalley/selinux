@@ -23,7 +23,7 @@
 #ifndef UTMPWATCHER_H
 #define UTMPWATCHER_H
 
-unsigned int utmpwatcher_handle(int inotify_fd, int wd);
+int utmpwatcher_handle(int inotify_fd, int wd);
 void utmpwatcher_add(int inotify_fd, const char *path);
 void utmpwatcher_free(void);
 

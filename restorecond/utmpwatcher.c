@@ -45,7 +45,7 @@
 static struct stringsList *utmp_ptr = NULL;
 static int utmp_wd = -1;
 
-unsigned int utmpwatcher_handle(int inotify_fd, int wd)
+int utmpwatcher_handle(int inotify_fd, int wd)
 {
 	int changed = 0;
 	struct utmp u;
