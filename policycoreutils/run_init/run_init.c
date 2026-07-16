@@ -213,6 +213,8 @@ static int authenticate_via_shadow_passwd(const struct passwd *p_passwd_line)
 	encrypted_password_s =
 		crypt(unencrypted_password_s, p_shadow_line->sp_pwdp);
 	memset(unencrypted_password_s, 0, strlen(unencrypted_password_s));
+	if (!encrypted_password_s)
+		return 0;
 
 	/* Return 1 (authenticated) iff the encrypted version of the user's *
 	 * input password matches the encrypted password stored in the      *
