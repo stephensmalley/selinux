@@ -285,7 +285,7 @@ int main(int argc, char **argv)
 	if (sepol_module_package_write(pkg, out)) {
 		fprintf(stderr,
 			"%s:  Error while writing module package to %s\n",
-			argv[0], argv[1]);
+			argv[0], outfile);
 		goto failure;
 	}
 
