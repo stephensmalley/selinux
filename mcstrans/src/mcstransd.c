@@ -58,6 +58,7 @@
 static int sockfd = -1; /* socket we are listening on */
 
 static volatile sig_atomic_t restart_daemon = false;
+static volatile sig_atomic_t terminate = false;
 static void cleanup_exit(int ret) __attribute__((noreturn));
 static void cleanup_exit(int ret)
 {
@@ -407,6 +408,10 @@ static void process_connections(void)
 	ufds[0].revents = 0;
 
 	while (1) {
+		if (terminate) {
+			free(ufds);
+			cleanup_exit(0);
+		}
 		if (restart_daemon) {
 			syslog(LOG_NOTICE, "Reload Translations");
 			finish_context_colors();
@@ -442,11 +447,9 @@ static void process_connections(void)
 	}
 }
 
-static void sigterm_handler(int sig) __attribute__((noreturn));
-
 static void sigterm_handler(int UNUSED(sig))
 {
-	cleanup_exit(0);
+	terminate = true;
 }
 
 static void sighup_handler(int UNUSED(sig))
