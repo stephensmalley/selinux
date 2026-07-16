@@ -1623,8 +1623,7 @@ static char *compute_trans_from_raw(const char *level, domain_t *domain)
 		if (l->sens == bc->level->sens) {
 			/* skip if alias of last bc */
 			if (last && last->level->sens == bc->level->sens &&
-			    ebitmap_cmp(&last->level->cat, &bc->level->cat) ==
-				    0)
+			    ebitmap_cmp(&last->level->cat, &bc->level->cat))
 				continue;
 
 			/* compute bits not consumed by base classification */
