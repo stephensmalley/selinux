@@ -90,8 +90,8 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if (argc >= optind + 1 && strcmp(argv[1], "-") != 0) {
-		ifile = argv[1];
+	if (argc >= optind + 1 && strcmp(argv[optind], "-") != 0) {
+		ifile = argv[optind];
 		in = fopen(ifile, "rb");
 		if (in == NULL) {
 			log_err("Failed to open %s: %s", ifile,
@@ -104,8 +104,8 @@ int main(int argc, char **argv)
 		in = stdin;
 	}
 
-	if (argc >= optind + 2 && strcmp(argv[2], "-") != 0) {
-		ofile = argv[2];
+	if (argc >= optind + 2 && strcmp(argv[optind + 1], "-") != 0) {
+		ofile = argv[optind + 1];
 		out = fopen(ofile, "w");
 		if (out == NULL) {
 			log_err("Failed to open %s: %s", ofile,
