@@ -911,9 +911,15 @@ static int process_trans(char *buffer)
 
 int read_translations(const char *filename)
 {
+	static unsigned int depth;
 	size_t size = 0;
 	char *buffer = NULL;
 	int rval = 0;
+
+	if (depth >= 32) {
+		syslog(LOG_ERR, "%s: Include nesting too deep", filename);
+		return -1;
+	}
 
 	FILE *cfg = fopen(filename, "r");
 	if (!cfg) {
@@ -921,6 +927,7 @@ int read_translations(const char *filename)
 		return -1;
 	}
 
+	depth++;
 	__fsetlocking(cfg, FSETLOCKING_BYCALLER);
 	while (getline(&buffer, &size, cfg) > 0) {
 		if (process_trans(buffer) < 0) {
@@ -931,6 +938,7 @@ int read_translations(const char *filename)
 	}
 	free(buffer);
 	fclose(cfg);
+	depth--;
 	return rval;
 }
 
