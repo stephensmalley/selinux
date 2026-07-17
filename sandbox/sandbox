@@ -530,7 +530,7 @@ sandbox [-h] [-l level ] [-[X|M] [-H homedir] [-T tempdir]] [-I includefile ] [-
                 shutil.rmtree(self.__homedir)
             if self.__tmpdir and not self.__options.tmpdir:
                 if self.__options.shred:
-                    self.shred(self.__homedir)
+                    self.shred(self.__tmpdir)
                 shutil.rmtree(self.__tmpdir)
 
     def shred(self, path):
