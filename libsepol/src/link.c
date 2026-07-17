@@ -1652,8 +1652,9 @@ static int copy_scope_index(scope_index_t *src, scope_index_t *dest,
 	ebitmap_node_t *node;
 	/* copy the scoping information for this avrule decl block */
 	for (i = 0; i < SYM_NUM; i++) {
-		ebitmap_t *srcmap = src->scope + i;
-		ebitmap_t *destmap = dest->scope + i;
+		ebitmap_t *srcmap = &src->scope[i];
+		ebitmap_t *destmap = &dest->scope[i];
+
 		if (copy_callback_f[i] == NULL) {
 			continue;
 		}
@@ -1672,18 +1673,28 @@ static int copy_scope_index(scope_index_t *src, scope_index_t *dest,
 		}
 	}
 
+	dest->class_perms_len = largest_mapped_class_value;
+	if (largest_mapped_class_value == 0) {
+		dest->class_perms_map = NULL;
+		return 0;
+	}
+
 	/* next copy the enabled permissions data  */
 	if ((dest->class_perms_map = calloc(largest_mapped_class_value,
 					    sizeof(*dest->class_perms_map))) ==
 	    NULL) {
 		goto cleanup;
 	}
-	dest->class_perms_len = largest_mapped_class_value;
-	for (i = 0; i < src->class_perms_len; i++) {
-		const ebitmap_t *srcmap = src->class_perms_map + i;
-		ebitmap_t *destmap =
-			dest->class_perms_map + module->map[SYM_CLASSES][i] - 1;
 
+	for (i = 0; i < src->class_perms_len; i++) {
+		const ebitmap_t *srcmap = &src->class_perms_map[i];
+		ebitmap_t *destmap;
+		if (ebitmap_is_empty(srcmap))
+			continue;
+		j = module->map[SYM_CLASSES][i] - 1;
+		if (j >= largest_mapped_class_value)
+			goto cleanup;
+		destmap = &dest->class_perms_map[j];
 		if (ebitmap_convert(srcmap, destmap, module->perm_map[i]))
 			goto cleanup;
 	}
@@ -1691,7 +1702,7 @@ static int copy_scope_index(scope_index_t *src, scope_index_t *dest,
 	return 0;
 
 cleanup:
-	ERR(state->handle, "Out of memory!");
+	ERR(state->handle, "Error copying scope index");
 	return -1;
 }
 
