@@ -39,10 +39,17 @@ static int run_check_digest(const char *cmd, const char *selabel_digest,
 	}
 
 	/* Only expect one line "(stdin)= x.." so read and find first space */
+	files_digest[0] = '\0';
 	while (fgets(files_digest, sizeof(files_digest) - 1, fp) != NULL)
 		;
 
 	files_ptr = strstr(files_digest, " ");
+	if (!files_ptr) {
+		fprintf(stderr, "Unexpected output from '%s': %s\n", cmd,
+			files_digest);
+		pclose(fp);
+		return -1;
+	}
 
 	rc = strncmp(selabel_digest, files_ptr + 1, digest_len * 2);
 	if (rc) {
