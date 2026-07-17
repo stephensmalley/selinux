@@ -696,6 +696,8 @@ static void disp_con(const char *scon_raw)
 		if (!color.range_fg)
 			errx(EXIT_FAILURE, "Invalid color string");
 		color.range_bg = strtok(NULL, " ");
+		if (!color.range_bg)
+			errx(EXIT_FAILURE, "Invalid color string");
 
 		color.valid = 1;
 	}
