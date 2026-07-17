@@ -485,7 +485,8 @@ err:
  *         a non-root user: symbolic links to root paths (such as /root) will
  *         not be followed.
  */
-static bool rm_rf(int targetfd, const char *path)
+#define RM_RF_MAXDEPTH 128
+static bool rm_rf(int targetfd, const char *path, unsigned int depth)
 {
 	struct stat statbuf;
 
@@ -498,6 +499,11 @@ static bool rm_rf(int targetfd, const char *path)
 	}
 
 	if (S_ISDIR(statbuf.st_mode)) {
+		if (depth >= RM_RF_MAXDEPTH) {
+			fprintf(stderr,
+				_("rm_rf: directory tree too deep, giving up\n"));
+			return false;
+		}
 		const int newfd =
 			openat(targetfd, path,
 			       O_RDONLY | O_DIRECTORY | O_NOFOLLOW | O_CLOEXEC);
@@ -521,7 +527,7 @@ static bool rm_rf(int targetfd, const char *path)
 				continue;
 			}
 
-			if (!rm_rf(dirfd(dir), entry->d_name)) {
+			if (!rm_rf(dirfd(dir), entry->d_name, depth + 1)) {
 				rc = false;
 			}
 		}
@@ -628,7 +634,7 @@ static int cleanup_tmpdir(const char *tmpdir, const char *src,
 		rc++;
 
 	/* Recursively remove the runtime temp directory.  */
-	if (!rm_rf(AT_FDCWD, tmpdir)) {
+	if (!rm_rf(AT_FDCWD, tmpdir, 0)) {
 		fprintf(stderr,
 			_("Failed to recursively remove directory %s\n"),
 			tmpdir);
