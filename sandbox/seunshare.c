@@ -486,7 +486,8 @@ err:
  *         not be followed.
  */
 #define RM_RF_MAXDEPTH 128
-static bool rm_rf(int targetfd, const char *path, unsigned int depth)
+static bool rm_rf(int targetfd, const char *path, unsigned int depth,
+		  bool removetop)
 {
 	struct stat statbuf;
 
@@ -527,24 +528,31 @@ static bool rm_rf(int targetfd, const char *path, unsigned int depth)
 				continue;
 			}
 
-			if (!rm_rf(dirfd(dir), entry->d_name, depth + 1)) {
+			if (!rm_rf(dirfd(dir), entry->d_name, depth + 1,
+				   true)) {
 				rc = false;
 			}
 		}
 
 		closedir(dir);
 
-		if (unlinkat(targetfd, path, AT_REMOVEDIR) < 0) {
-			perror("unlinkat");
-			rc = false;
+		if (removetop) {
+			if (unlinkat(targetfd, path, AT_REMOVEDIR) < 0) {
+				perror("unlinkat");
+				rc = false;
+			}
 		}
 
 		return rc;
 	}
-	if (unlinkat(targetfd, path, 0) < 0) {
-		perror("unlinkat");
-		return false;
+
+	if (removetop) {
+		if (unlinkat(targetfd, path, 0) < 0) {
+			perror("unlinkat");
+			return false;
+		}
 	}
+
 	return true;
 }
 
@@ -630,20 +638,28 @@ static int cleanup_tmpdir(const char *tmpdir, const char *src,
 		free_args(args);
 	}
 
-	if (setfsuid_checked(0, 0) < 0)
-		rc++;
-
-	/* Recursively remove the runtime temp directory.  */
-	if (!rm_rf(AT_FDCWD, tmpdir, 0)) {
+	/* Remove files under the tmpdir as the user */
+	if (setfsuid_checked(0, pwd->pw_uid) < 0) {
+		fprintf(stderr,
+			_("unable to switch to user for removing files under tmp dir\n"));
+		return ++rc;
+	}
+	if (!rm_rf(AT_FDCWD, tmpdir, 0, false)) {
 		fprintf(stderr,
 			_("Failed to recursively remove directory %s\n"),
 			tmpdir);
 		rc++;
 	}
 
-	if (setfsuid_checked(0, pwd->pw_uid) < 0) {
+	/* Then remove the tmpdir itself as root */
+	if (setfsuid_checked(pwd->pw_uid, 0) < 0) {
 		fprintf(stderr,
-			_("unable to switch back to user after clearing tmp dir\n"));
+			_("unable to switch back to root to delete tmpdir\n"));
+		return ++rc;
+	}
+	if (rmdir(tmpdir) < 0) {
+		fprintf(stderr, _("Failed to remove directory %s: %m\n"),
+			tmpdir);
 		rc++;
 	}
 
