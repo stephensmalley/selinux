@@ -864,6 +864,12 @@ int main(int argc, char **argv)
 			verbose++;
 			break;
 		case 'C':
+			/*
+			 * This is a no-op ever since
+			 * commit 1f0b5bd920c8 switched
+			 * the default to support
+			 * use of file-cap binaries.
+			 */
 			cap_set = CAPNG_SELECT_CAPS;
 			break;
 		case 'P':
