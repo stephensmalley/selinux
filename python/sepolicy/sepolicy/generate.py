@@ -212,8 +212,6 @@ class policy:
             print("Can not get port types", e)
 
         self.symbols = {}
-        self.symbols["openlog"] = "set_use_kerberos(True)"
-        self.symbols["openlog"] = "set_use_kerb_rcache(True)"
         self.symbols["openlog"] = "set_use_syslog(True)"
         self.symbols["gethostby"] = "set_use_resolve(True)"
         self.symbols["getaddrinfo"] = "set_use_resolve(True)"
@@ -226,8 +224,7 @@ class policy:
         self.symbols["getpwnam"] = "set_use_uid(True)"
         self.symbols["getpwuid"] = "set_use_uid(True)"
         self.symbols["dbus_"] = "set_use_dbus(True)"
-        self.symbols["pam_"] = "set_use_pam(True)"
-        self.symbols["pam_"] = "set_use_audit(True)"
+        self.symbols["pam_"] = "set_use_pam(True);set_use_audit(True)"
         self.symbols["fork"] = "add_process('fork')"
         self.symbols["transition"] = "add_process('transition')"
         self.symbols["sigchld"] = "add_process('sigchld')"
