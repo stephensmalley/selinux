@@ -707,7 +707,6 @@ int main(int argc, char *argv[])
 	if (fd < 0) {
 		fprintf(stderr, "%s: mkstemp %s failed: %s\n", argv[0], tmp,
 			strerror(errno));
-		close(fd);
 		goto err;
 	}
 
