@@ -663,6 +663,7 @@ static char *create_tmpdir(const char *src, struct stat *src_st,
 	int fd_t = -1, fd_s = -1;
 	struct stat tmp_st;
 	char *con = NULL;
+	bool created = false;
 
 	/* get selinux context of source directory */
 	if (execcon) {
@@ -697,6 +698,8 @@ static char *create_tmpdir(const char *src, struct stat *src_st,
 			strerror(errno));
 		goto err;
 	}
+
+	created = true;
 
 	/* temporary directory must be owned by root:user */
 	fd_t = pin_dir(tmpdir, out_st);
@@ -747,11 +750,22 @@ static char *create_tmpdir(const char *src, struct stat *src_st,
 		fprintf(stderr,
 			_("Failed to populate runtime temporary directory\n"));
 		cleanup_tmpdir(tmpdir, src, pwd, 0);
+		created = false;
 		goto err;
 	}
 
 	goto good;
 err:
+	if (created) {
+		/*
+		 * Best-effort removal of still-empty tmpdir.
+		 * We do not use setfsuid_checked() here
+		 * because the fsuid is indeterminate on
+		 * some error paths.
+		 */
+		(void)setfsuid(0);
+		(void)rmdir(tmpdir);
+	}
 	free(tmpdir);
 	tmpdir = NULL;
 good:
