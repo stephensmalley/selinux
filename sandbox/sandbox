@@ -84,14 +84,13 @@ def error_exit(msg):
 
 
 def copyfile(file, srcdir, dest):
-    import re
     if file.startswith(srcdir):
         dname = os.path.dirname(file)
         bname = os.path.basename(file)
         if dname == srcdir:
             dest = dest + "/" + bname
         else:
-            newdir = re.sub(srcdir, dest, dname)
+            newdir = dest + dname[len(srcdir):]
             if not os.path.exists(newdir):
                 os.makedirs(newdir)
             dest = newdir + "/" + bname
