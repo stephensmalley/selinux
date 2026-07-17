@@ -881,10 +881,10 @@ int main(int argc, char **argv)
 		}
 	}
 
-	if ((wayland_display &&
-	     (strchr(wayland_display, '/') || strstr(wayland_display, ".."))) ||
-	    (pipewire_socket &&
-	     (strchr(pipewire_socket, '/') || strstr(pipewire_socket, "..")))) {
+	if ((wayland_display && (strchr(wayland_display, '/') ||
+				 !strcmp(wayland_display, ".."))) ||
+	    (pipewire_socket && (strchr(pipewire_socket, '/') ||
+				 !strcmp(pipewire_socket, "..")))) {
 		fprintf(stderr,
 			_("Error: -W/-P must be a socket name, not a path\n"));
 		return -1;
