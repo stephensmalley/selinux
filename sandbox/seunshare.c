@@ -448,6 +448,7 @@ static int rsynccmd(const char *src, const char *dst, char ***cmd)
 	*cmd = calloc(3 + fglob.gl_pathc + 2, sizeof(char *));
 	if (!*cmd) {
 		fprintf(stderr, _("Out of memory\n"));
+		globfree(&fglob);
 		return -1;
 	}
 
