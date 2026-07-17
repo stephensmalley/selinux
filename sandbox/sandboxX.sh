@@ -2,9 +2,9 @@
 trap "" TERM
 context=`id -Z | secon -t -l -P`
 export TITLE="Sandbox $context -- `grep ^#TITLE: ~/.sandboxrc | /usr/bin/cut -b8-80`"
-[ -z $1 ] && export WAYLAND_NATIVE="no" || export WAYLAND_NATIVE="$1"
-[ -z $2 ] && export SCREENSIZE="1000x700" || export SCREENSIZE="$2"
-[ -z $3 ] && export DPI="96" || export DPI="$3"
+[ -z "$1" ] && export WAYLAND_NATIVE="no" || export WAYLAND_NATIVE="$1"
+[ -z "$2" ] && export SCREENSIZE="1000x700" || export SCREENSIZE="$2"
+[ -z "$3" ] && export DPI="96" || export DPI="$3"
 trap "exit 0" HUP
 
 mkdir -p ~/.config/openbox
