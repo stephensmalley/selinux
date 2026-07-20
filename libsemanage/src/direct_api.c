@@ -27,6 +27,7 @@
 #include <assert.h>
 #include <fcntl.h>
 #include <libgen.h>
+#include <poll.h>
 #include <stdio.h>
 #include <stdio_ext.h>
 #include <stdlib.h>
@@ -565,48 +566,135 @@ cleanup:
 	return retval;
 }
 
-static int read_from_pipe_to_data(semanage_handle_t *sh, size_t initial_len,
-				  int fd, char **out_data_read,
-				  size_t *out_read_len)
+static int append_read(semanage_handle_t *sh, int fd, char **buf, size_t *len,
+		       size_t *cap)
 {
-	size_t max_len = initial_len;
-	ssize_t read_len;
-	size_t data_read_len = 0;
-	char *data_read = NULL;
+	ssize_t r;
 
-	if (max_len <= 0) {
-		max_len = 1;
+	if (*len == *cap) {
+		ssize_t ncap;
+		char *tmp;
+
+		if (__builtin_mul_overflow(*cap ? *cap : 4096, 2, &ncap)) {
+			ERR(sh, "Overflow");
+			return -1;
+		}
+		tmp = realloc(*buf, ncap);
+		if (!tmp) {
+			ERR(sh, "Out of memory.");
+			return -1;
+		}
+		*buf = tmp;
+		*cap = ncap;
 	}
-	data_read = malloc(max_len * sizeof(*data_read));
-	if (data_read == NULL) {
-		ERR(sh, "Failed to malloc, out of memory.");
+
+	r = read(fd, *buf + *len, *cap - *len);
+	if (r < 0) {
+		if (errno == EINTR || errno == EAGAIN)
+			return 1;
+		ERR(sh, "Failed to read from pipe.");
 		return -1;
 	}
+	if (r == 0)
+		return 0;
+	*len += (size_t)r;
+	return 1;
+}
 
-	while ((read_len = read(fd, data_read + data_read_len,
-				max_len - data_read_len)) > 0) {
-		data_read_len += read_len;
-		if (data_read_len == max_len) {
-			char *tmp;
-			if (__builtin_mul_overflow(max_len, 2, &max_len)) {
-				ERR(sh, "Overflow");
-				free(data_read);
-				return -1;
+static int pump_pipes(semanage_handle_t *sh, int in_fd, int out_fd, int err_fd,
+		      const char *in_data, size_t in_len, char **out_data,
+		      size_t *out_len, char **err_data, size_t *err_len)
+{
+	size_t in_off = 0, out_cap = 0, err_cap = 0;
+	int rc = 0;
+
+	*out_data = NULL;
+	*out_len = 0;
+	*err_data = NULL;
+	*err_len = 0;
+
+	while (in_fd >= 0 || out_fd >= 0 || err_fd >= 0) {
+		struct pollfd pfd[3];
+
+		int n = 0, i_in = -1, i_out = -1, i_err = -1;
+
+		if (in_fd >= 0) {
+			pfd[n].fd = in_fd;
+			pfd[n].events = POLLOUT;
+			i_in = n++;
+		}
+		if (out_fd >= 0) {
+			pfd[n].fd = out_fd;
+			pfd[n].events = POLLIN;
+			i_out = n++;
+		}
+		if (err_fd >= 0) {
+			pfd[n].fd = err_fd;
+			pfd[n].events = POLLIN;
+			i_err = n++;
+		}
+
+		if (poll(pfd, n, -1) < 0) {
+			if (errno == EINTR)
+				continue;
+			ERR(sh, "poll() failed.");
+			rc = -1;
+			break;
+		}
+
+		if (i_in >= 0 && (pfd[i_in].revents & (POLLOUT | POLLERR))) {
+			ssize_t w =
+				write(in_fd, in_data + in_off, in_len - in_off);
+			if (w < 0) {
+				if (errno != EINTR && errno != EAGAIN) {
+					ERR(sh,
+					    "Failed to write to input pipe.");
+					rc = -1;
+					close(in_fd);
+					in_fd = -1;
+				}
+			} else {
+				in_off += (size_t)w;
+				if (in_off == in_len) {
+					close(in_fd);
+					in_fd = -1;
+				}
 			}
-			tmp = realloc(data_read, max_len);
-			if (tmp == NULL) {
-				ERR(sh, "Failed to realloc, out of memory.");
-				free(data_read);
-				return -1;
+		}
+
+		if (i_out >= 0 &&
+		    (pfd[i_out].revents & (POLLIN | POLLHUP | POLLERR))) {
+			int r = append_read(sh, out_fd, out_data, out_len,
+					    &out_cap);
+			if (r <= 0) {
+				if (r < 0)
+					rc = -1;
+				close(out_fd);
+				out_fd = -1;
 			}
-			data_read = tmp;
+		}
+
+		if (i_err >= 0 &&
+		    (pfd[i_err].revents & (POLLIN | POLLHUP | POLLERR))) {
+			int r = append_read(sh, err_fd, err_data, err_len,
+					    &err_cap);
+			if (r <= 0) {
+				if (r < 0)
+					rc = -1;
+				close(err_fd);
+				err_fd = -1;
+			}
 		}
 	}
 
-	*out_read_len = data_read_len;
-	*out_data_read = data_read;
+	if (in_fd >= 0)
+		close(in_fd);
+	if (out_fd >= 0)
+		close(out_fd);
+	if (err_fd >= 0)
+		close(err_fd);
 
-	return 0;
+	return rc;
 }
 
 // Forward error messages to redirected stderr pipe
@@ -649,7 +737,6 @@ static int semanage_pipe_data(semanage_handle_t *sh, const char *path,
 	char *err_data_read = NULL;
 	int retval;
 	int status = 0;
-	size_t initial_len;
 	size_t data_read_len = 0;
 	size_t err_data_read_len = 0;
 	struct sigaction old_signal;
@@ -747,46 +834,16 @@ child_err:
 			any_err = 1;
 		}
 
-		retval = write_full(input_fd[PIPE_WRITE], in_data, in_data_len);
-		if (retval == -1) {
-			ERR(sh, "Failed to write data to input pipe.");
-			any_err = 1;
-		}
-		retval = close(input_fd[PIPE_WRITE]);
+		retval = pump_pipes(sh, input_fd[PIPE_WRITE],
+				    output_fd[PIPE_READ], err_fd[PIPE_READ],
+				    in_data, in_data_len, &data_read,
+				    &data_read_len, &err_data_read,
+				    &err_data_read_len);
 		input_fd[PIPE_WRITE] = -1;
-		if (retval == -1) {
-			ERR(sh, "Unable to close write end of input pipe.");
-			any_err = 1;
-		}
-
-		initial_len = 1 << 17;
-		retval = read_from_pipe_to_data(sh, initial_len,
-						output_fd[PIPE_READ],
-						&data_read, &data_read_len);
-		if (retval != 0) {
-			any_err = 1;
-		}
-		retval = close(output_fd[PIPE_READ]);
 		output_fd[PIPE_READ] = -1;
-		if (retval == -1) {
-			ERR(sh, "Unable to close read end of output pipe.");
-			any_err = 1;
-		}
-
-		initial_len = 1 << 9;
-		retval = read_from_pipe_to_data(sh, initial_len,
-						err_fd[PIPE_READ],
-						&err_data_read,
-						&err_data_read_len);
-		if (retval != 0) {
-			any_err = 1;
-		}
-		retval = close(err_fd[PIPE_READ]);
 		err_fd[PIPE_READ] = -1;
-		if (retval == -1) {
-			ERR(sh, "Unable to close read end of error pipe.");
+		if (retval != 0)
 			any_err = 1;
-		}
 
 		errno = ENODATA;
 		if (waitpid(pid, &status, 0) == -1 || !WIFEXITED(status)) {
