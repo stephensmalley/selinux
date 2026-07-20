@@ -26,9 +26,9 @@ import textwrap
 
 import selinux.audit2why as audit2why
 try:
-    from setools import *
-except:
-    pass
+    import setools
+except ImportError:
+    setools = None
 
 from . import refpolicy
 from . import objectmodel
@@ -85,6 +85,7 @@ class PolicyGenerator:
         self.dontaudit = False
         self.xperms = False
 
+        self.policy = None
         self.domains = None
         self.gen_cil = False
         self.comment_start = '#'
@@ -206,23 +207,31 @@ class PolicyGenerator:
                 rule.comment += "\n%s" % self.comment_start
                 rule.comment += "\tPossible cause is the source %s and target %s are different." % reason
 
-        try:
-            if ( av.type == audit2why.TERULE and
-                 "write" in av.perms and
-                 ( "dir" in av.obj_class or "open" in av.perms )):
-                if not self.domains:
-                    self.domains = seinfo(ATTRIBUTE, name="domain")[0]["types"]
-                types=[]
-
-                for i in [x[TCONTEXT] for x in sesearch([ALLOW], {SCONTEXT: av.src_type, CLASS: av.obj_class, PERMS: av.perms})]:
-                    if i not in self.domains:
-                        types.append(i)
+        if ( setools and
+             av.type == audit2why.TERULE and
+             "write" in av.perms and
+             ( "dir" in av.obj_class or "open" in av.perms )):
+            try:
+                if not self.policy:
+                    self.policy = setools.SELinuxPolicy()
+                    self.domains = set(str(t) for t in
+                                       self.policy.lookup_typeattr("domain").expand())
+                q = setools.TERuleQuery(self.policy,
+                                        ruletype=[setools.TERuletype.allow],
+                                        source=av.src_type,
+                                        tclass=[av.obj_class],
+                                        perms=av.perms, perms_subset=True)
+                types = set()
+                for r in q.results():
+                    types.update(str(t) for t in r.target.expand())
+                types -= self.domains
+                types = sorted(types)
                 if len(types) == 1:
                     rule.comment += "\n%s!!!! The source type '%s' can write to a '%s' of the following type:\n%s %s\n" % (self.comment_start, av.src_type, av.obj_class, self.comment_start, ", ".join(types))
                 elif len(types) >= 1:
                     rule.comment += "\n%s!!!! The source type '%s' can write to a '%s' of the following types:\n%s %s\n" % (self.comment_start, av.src_type, av.obj_class, self.comment_start, ", ".join(types))
-        except:
-            pass
+            except setools.exception.SEToolsException:
+                pass
 
         self.module.children.append(rule)
 
