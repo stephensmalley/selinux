@@ -66,23 +66,6 @@ for i in $FS; do
 done
 }
 
-#
-# Get the default label returned from the kernel for a file with a label the
-# kernel does not understand
-#
-get_undefined_type() {
-	SELINUXMNT=`grep selinuxfs /proc/self/mountinfo | head -1 | awk '{ print $5 }'`
-	cat ${SELINUXMNT}/initial_contexts/unlabeled | secon -t
-}
-
-#
-# Get the default label for a file without a label
-#
-get_unlabeled_type() {
-	SELINUXMNT=`grep selinuxfs /proc/self/mountinfo | head -1 | awk '{ print $5 }'`
-	cat $SELINUXMNT/initial_contexts/file | secon -t
-}
-
 exclude_dirs_from_relabelling() {
     exclude_from_relabelling=
     if [ -e /etc/selinux/fixfiles_exclude_dirs ]
