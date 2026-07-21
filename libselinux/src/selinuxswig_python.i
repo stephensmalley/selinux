@@ -88,9 +88,30 @@ def install(src, dest):
   $1 = &temp;
 }
 
-%typemap(in, numinputs=0) void *(char *temp=NULL) {
-	$1 = temp;
+/*
+ * Auto-supply NULL for the opaque auditdata parameter on avc_has_perm(),
+ * avc_audit(), and selinux_check_access(); it is not usable from Python.
+ * Restricted by parameter name so that it does not swallow other void * args.
+ */
+%typemap(in, numinputs=0) void *auditdata {
+	$1 = NULL;
 }
+
+/*
+ * security_load_policy(const void *data, size_t len) accept any
+ * object exposing the buffer protocol (bytes, bytearray, mmap, ...)
+ * as a single Python argument.
+ */
+%typemap(in) (const void *data, size_t len)(Py_buffer view) {
+	view.obj = NULL;
+	if (PyObject_GetBuffer($input, &view, PyBUF_SIMPLE) < 0)
+		SWIG_fail;
+	$1 = view.buf;
+	$2 = (size_t)view.len;
+}
+%typemap(freearg) (const void *data, size_t len) {
+	PyBuffer_Release(&view$argnum);
+ }
 
 /* Makes security_compute_user() return a Python list of contexts */
 %typemap(argout) (char ***con) {
