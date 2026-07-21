@@ -74,6 +74,17 @@ $CXX $CXXFLAGS $LIB_FUZZING_ENGINE binpolicy-fuzzer.o "$DESTDIR/usr/lib/libsepol
 
 zip -j "$OUT/binpolicy-fuzzer_seed_corpus.zip" libsepol/fuzz/policy.bin
 
+## module package fuzzer ##
+
+# CFLAGS, CXXFLAGS and LIB_FUZZING_ENGINE have to be split to be accepted by
+# the compiler/linker so they shouldn't be quoted
+# shellcheck disable=SC2086
+$CC $CFLAGS -c -o module-package-fuzzer.o libsepol/fuzz/module-package-fuzzer.c
+# shellcheck disable=SC2086
+$CXX $CXXFLAGS $LIB_FUZZING_ENGINE module-package-fuzzer.o "$DESTDIR/usr/lib/libsepol.a" -o "$OUT/module-package-fuzzer"
+
+zip -j "$OUT/module-package-fuzzer_seed_corpus.zip" libsepol/fuzz/min_mod.pp
+
 ## checkpolicy fuzzer ##
 
 make -C checkpolicy clean
