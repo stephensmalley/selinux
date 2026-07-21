@@ -225,7 +225,7 @@ static int add_mnemonic(const char *name, uint32_t color)
    May modify the data pointed to by the buffer parameter */
 static int process_color(char *buffer, int line)
 {
-	char rule[10], pat[256], f[256], b[256];
+	char rule[10], pat[4096], f[256], b[256];
 	uint32_t i, fg, bg;
 	int ret;
 
@@ -234,7 +234,7 @@ static int process_color(char *buffer, int line)
 	if (buffer[0] == '#' || buffer[0] == '\0')
 		return 0;
 
-	ret = sscanf(buffer, "%8s %255s = %255s %255s", rule, pat, f, b);
+	ret = sscanf(buffer, "%8s %4095s = %255s %255s", rule, pat, f, b);
 	if (ret == 4) {
 		if (find_mnemonic(f, &fg) == 0 && find_mnemonic(b, &bg) == 0)
 			for (i = 0; i < N_COLOR; i++)
