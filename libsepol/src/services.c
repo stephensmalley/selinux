@@ -1799,6 +1799,12 @@ int str_read(char **strp, struct policy_file *fp, size_t len)
 	if (rc)
 		return rc;
 
+	/* Check for an embedded NUL character */
+	if (memchr(str, '\0', len)) {
+		errno = EINVAL;
+		return -1;
+	}
+
 	str[len] = '\0';
 	return 0;
 }
