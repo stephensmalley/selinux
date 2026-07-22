@@ -37,7 +37,7 @@
 #include "semanage_conf.h"
 #include "semanage_store.h"
 
-#define SEMANAGE_COMMIT_READ_WAIT 5
+#define SEMANAGE_COMMIT_READ_WAIT -1
 
 static char *private_semanage_root = NULL;
 

@@ -50,6 +50,7 @@ typedef struct dbase_policydb dbase_t;
 #include <stdio_ext.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include <sys/file.h>
 #include <sys/stat.h>
@@ -1944,61 +1945,55 @@ static int semanage_get_lock(semanage_handle_t *sh, const char *lock_name,
 			     const char *lock_file)
 {
 	int fd;
-	struct timeval origtime, curtime;
-	int got_lock = 0;
+	int left;
 
-	if ((fd = open(lock_file, O_RDWR | O_CREAT | O_TRUNC | O_CLOEXEC,
+	if ((fd = open(lock_file, O_RDWR | O_CREAT | O_CLOEXEC,
 		       S_IRUSR | S_IWUSR)) == -1) {
 		ERR(sh, "Could not open direct %s at %s.", lock_name,
 		    lock_file);
 		return -1;
 	}
-	if (fcntl(fd, F_SETFD, FD_CLOEXEC) < 0) {
-		ERR(sh, "Could not set close-on-exec for %s at %s.", lock_name,
-		    lock_file);
-		close(fd);
-		return -1;
-	}
+
+	if (flock(fd, LOCK_EX | LOCK_NB) == 0)
+		return fd;
+	if (errno != EAGAIN && errno != EWOULDBLOCK)
+		goto err;
 
 	if (sh->timeout == 0) {
-		/* return immediately */
-		origtime.tv_sec = 0;
-	} else {
-		origtime.tv_sec = sh->timeout;
-	}
-	origtime.tv_usec = 0;
-	do {
-		curtime.tv_sec = 1;
-		curtime.tv_usec = 0;
-		if (flock(fd, LOCK_EX | LOCK_NB) == 0) {
-			got_lock = 1;
-			break;
-		} else if (errno != EAGAIN) {
-			ERR(sh, "Error obtaining direct %s at %s.", lock_name,
-			    lock_file);
-			close(fd);
-			return -1;
-		}
-		if (origtime.tv_sec > 0 || sh->timeout == -1) {
-			if (select(0, NULL, NULL, NULL, &curtime) == -1) {
-				if (errno == EINTR) {
-					continue;
-				}
-				ERR(sh,
-				    "Error while waiting to get direct %s at %s.",
-				    lock_name, lock_file);
-				close(fd);
-				return -1;
-			}
-			origtime.tv_sec--;
-		}
-	} while (origtime.tv_sec > 0 || sh->timeout == -1);
-	if (!got_lock) {
 		ERR(sh, "Could not get direct %s at %s.", lock_name, lock_file);
 		close(fd);
 		return -1;
 	}
-	return fd;
+
+	INFO(sh, "Waiting for semanage %s at %s (held by another process).",
+	     lock_name, lock_file);
+
+	if (sh->timeout < 0) {
+		while (flock(fd, LOCK_EX) != 0) {
+			if (errno != EINTR)
+				goto err;
+		}
+		return fd;
+	}
+
+	for (left = sh->timeout; left > 0; left--) {
+		const struct timespec ts = { 1, 0 };
+
+		nanosleep(&ts, NULL);
+		if (flock(fd, LOCK_EX | LOCK_NB) == 0)
+			return fd;
+		if (errno != EAGAIN && errno != EWOULDBLOCK)
+			goto err;
+	}
+
+	ERR(sh, "Could not get direct %s at %s after %d seconds.", lock_name,
+	    lock_file, sh->timeout);
+	close(fd);
+	return -1;
+err:
+	ERR(sh, "Error obtaining direct %s at %s.", lock_name, lock_file);
+	close(fd);
+	return -1;
 }
 
 /* Locking for the module store for transactions.  This is very basic
