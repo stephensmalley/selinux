@@ -1,4 +1,5 @@
 
+#include <ctype.h>
 #include <sepol/policydb/conditional.h>
 #include <sepol/policydb/ebitmap.h>
 #include <sepol/policydb/polcaps.h>
@@ -122,6 +123,23 @@ static int validate_value(uint32_t value, const validate_t *flavor)
 		goto bad;
 	if (ebitmap_get_bit(&flavor->gaps, value - 1))
 		goto bad;
+
+	return 0;
+
+bad:
+	return -1;
+}
+
+static int validate_string_field(const char *s)
+{
+	if (!s || !*s)
+		goto bad;
+
+	while (*s) {
+		if (iscntrl((unsigned char)*s))
+			goto bad;
+		s++;
+	}
 
 	return 0;
 
@@ -1436,6 +1454,8 @@ static int validate_filename_trans(hashtab_key_t k, hashtab_datum_t d,
 		goto bad;
 	if (validate_value(ftk->tclass, &flavors[SYM_CLASSES]))
 		goto bad;
+	if (validate_string_field(ftk->name))
+		goto bad;
 	if (!ftd)
 		goto bad;
 	for (; ftd; ftd = ftd->next) {
@@ -1505,7 +1525,7 @@ static int validate_ocontexts(sepol_handle_t *handle, const policydb_t *p,
 					if (validate_context(&octx->context[1],
 							     flavors, p->mls))
 						goto bad;
-					if (!octx->u.name)
+					if (validate_string_field(octx->u.name))
 						goto bad;
 					break;
 				case OCON_PORT:
@@ -1522,7 +1542,7 @@ static int validate_ocontexts(sepol_handle_t *handle, const policydb_t *p,
 					default:
 						goto bad;
 					}
-					if (!octx->u.name)
+					if (validate_string_field(octx->u.name))
 						goto bad;
 					break;
 				case OCON_IBPKEY:
@@ -1533,7 +1553,8 @@ static int validate_ocontexts(sepol_handle_t *handle, const policydb_t *p,
 				case OCON_IBENDPORT:
 					if (octx->u.ibendport.port == 0)
 						goto bad;
-					if (!octx->u.ibendport.dev_name)
+					if (validate_string_field(
+						    octx->u.ibendport.dev_name))
 						goto bad;
 					break;
 				}
@@ -1560,7 +1581,7 @@ static int validate_ocontexts(sepol_handle_t *handle, const policydb_t *p,
 						goto bad;
 					break;
 				case OCON_XEN_DEVICETREE:
-					if (!octx->u.name)
+					if (validate_string_field(octx->u.name))
 						goto bad;
 					break;
 				}
@@ -1590,9 +1611,11 @@ static int validate_genfs(sepol_handle_t *handle, const policydb_t *p,
 			    validate_value(octx->v.sclass,
 					   &flavors[SYM_CLASSES]))
 				goto bad;
+			if (validate_string_field(octx->u.name))
+				goto bad;
 		}
 
-		if (!genfs->fstype)
+		if (validate_string_field(genfs->fstype))
 			goto bad;
 	}
 
@@ -1727,6 +1750,8 @@ validate_filename_trans_rules(sepol_handle_t *handle,
 				   &flavors[SYM_CLASSES]))
 			goto bad;
 		if (validate_simpletype(filename_trans->otype, p, flavors))
+			goto bad;
+		if (validate_string_field(filename_trans->name))
 			goto bad;
 
 		/* currently only the RULE_SELF flag can be set */
