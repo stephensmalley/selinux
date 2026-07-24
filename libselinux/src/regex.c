@@ -36,6 +36,10 @@
 static struct regex_data *regex_data_create(void);
 
 #ifdef USE_PCRE2
+static pthread_key_t match_data_key;
+static pthread_once_t match_data_key_once = PTHREAD_ONCE_INIT;
+static int match_data_key_alloc_failed = 0;
+static int match_data_key_created = 0;
 static pthread_once_t once = PTHREAD_ONCE_INIT;
 static char arch_string_buffer[32];
 
@@ -71,14 +75,6 @@ const char *regex_arch_string(void)
 
 struct regex_data {
 	pcre2_code *regex; /* compiled regular expression */
-#ifndef AGGRESSIVE_FREE_AFTER_REGEX_MATCH
-	/*
-	 * match data block required for the compiled
-	 * pattern in pcre2
-	 */
-	pcre2_match_data *match_data;
-#endif
-	pthread_mutex_t match_mutex;
 };
 
 int regex_prepare_data(struct regex_data **regex, char const *pattern_string,
@@ -98,13 +94,6 @@ int regex_prepare_data(struct regex_data **regex, char const *pattern_string,
 		goto err;
 	}
 
-#ifndef AGGRESSIVE_FREE_AFTER_REGEX_MATCH
-	(*regex)->match_data =
-		pcre2_match_data_create_from_pattern((*regex)->regex, NULL);
-	if (!(*regex)->match_data) {
-		goto err;
-	}
-#endif
 	return 0;
 
 err:
@@ -158,13 +147,6 @@ int regex_load_mmap(struct mmap_area *mmap_area, struct regex_data **regex,
 					    NULL);
 		if (rc != 1)
 			goto err;
-
-#ifndef AGGRESSIVE_FREE_AFTER_REGEX_MATCH
-		(*regex)->match_data = pcre2_match_data_create_from_pattern(
-			(*regex)->regex, NULL);
-		if (!(*regex)->match_data)
-			goto err;
-#endif
 
 		*regex_compiled = true;
 	}
@@ -223,18 +205,32 @@ out:
 	return rc;
 }
 
+static void match_data_thread_free(void *ptr)
+{
+	pcre2_match_data_free(ptr);
+}
+
+static void match_data_key_init(void)
+{
+	if (__selinux_key_create(&match_data_key, match_data_thread_free) == 0)
+		match_data_key_created = 1;
+	else
+		match_data_key_alloc_failed = 1;
+}
+
+static void __attribute__((destructor)) match_data_key_destroy(void)
+{
+	if (match_data_key_created) {
+		__selinux_key_delete(match_data_key);
+		match_data_key_created = 0;
+	}
+}
+
 void regex_data_free(struct regex_data *regex)
 {
 	if (regex) {
 		if (regex->regex)
 			pcre2_code_free(regex->regex);
-
-#ifndef AGGRESSIVE_FREE_AFTER_REGEX_MATCH
-		if (regex->match_data)
-			pcre2_match_data_free(regex->match_data);
-#endif
-
-		__pthread_mutex_destroy(&regex->match_mutex);
 		free(regex);
 	}
 }
@@ -242,31 +238,38 @@ void regex_data_free(struct regex_data *regex)
 int regex_match(struct regex_data *regex, char const *subject, int partial)
 {
 	int rc;
-	pcre2_match_data *match_data;
-	__pthread_mutex_lock(&regex->match_mutex);
+	bool slow;
+	pcre2_match_data *match_data = NULL;
 
-#ifdef AGGRESSIVE_FREE_AFTER_REGEX_MATCH
-	match_data = pcre2_match_data_create_from_pattern(regex->regex, NULL);
-	if (match_data == NULL) {
-		__pthread_mutex_unlock(&regex->match_mutex);
-		return REGEX_ERROR;
+	__selinux_once(match_data_key_once, match_data_key_init);
+
+	if (!match_data_key_alloc_failed) {
+		match_data = __selinux_getspecific(match_data_key);
+		if (!match_data) {
+			match_data = pcre2_match_data_create(1, NULL);
+			if (match_data) {
+				__selinux_setspecific(match_data_key,
+						      match_data);
+			}
+		}
 	}
-#else
-	match_data = regex->match_data;
-#endif
+
+	slow = (match_data_key_alloc_failed || match_data == NULL);
+	if (slow) {
+		match_data = pcre2_match_data_create_from_pattern(regex->regex,
+								  NULL);
+		if (!match_data)
+			return REGEX_ERROR;
+	}
 
 	rc = pcre2_match(regex->regex, (PCRE2_SPTR)subject,
 			 PCRE2_ZERO_TERMINATED, 0,
 			 partial ? PCRE2_PARTIAL_SOFT : 0, match_data, NULL);
 
-#ifdef AGGRESSIVE_FREE_AFTER_REGEX_MATCH
-	// pcre2_match allocates heap and it won't be freed until
-	// pcre2_match_data_free, resulting in heap overhead.
-	pcre2_match_data_free(match_data);
-#endif
+	if (slow)
+		pcre2_match_data_free(match_data);
 
-	__pthread_mutex_unlock(&regex->match_mutex);
-	if (rc > 0)
+	if (rc >= 0)
 		return REGEX_MATCH;
 	switch (rc) {
 	case PCRE2_ERROR_PARTIAL:
@@ -305,10 +308,6 @@ static struct regex_data *regex_data_create(void)
 {
 	struct regex_data *regex_data =
 		(struct regex_data *)calloc(1, sizeof(struct regex_data));
-	if (!regex_data)
-		return NULL;
-
-	__pthread_mutex_init(&regex_data->match_mutex, NULL);
 	return regex_data;
 }
 
