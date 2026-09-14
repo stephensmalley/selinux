@@ -405,6 +405,7 @@ static int compile_regex(struct regex_spec *spec, char *errbuf,
 	const char *reg_buf;
 	char *anchored_regex, *cp;
 	struct regex_error_data error_data;
+	struct regex_data *tmp_regex;
 	size_t len;
 	int rc;
 	bool regex_compiled;
@@ -460,19 +461,40 @@ static int compile_regex(struct regex_spec *spec, char *errbuf,
 		errno = EINVAL;
 		return -1;
 	}
-	cp = anchored_regex = malloc(len + 3);
+
+	/*
+	 * Compile the input as-is once, so an entry that is invalid on its
+	 * own (e.g. unmatched ')') is rejected here rather than being
+	 * silently made valid by the (?:...) added below. Report the error
+	 * against the unanchored string so the offset points into what the
+	 * user wrote.
+	 */
+	rc = regex_prepare_data(&tmp_regex, reg_buf, &error_data, false);
+	if (rc < 0) {
+		regex_format_error(&error_data, errbuf, errbuf_size);
+		__pthread_mutex_unlock(&spec->regex_lock);
+		errno = EINVAL;
+		return -1;
+	}
+	regex_data_free(tmp_regex);
+
+#define REPREFIX "\\A(?:"
+#define RESUFFIX "\\E)\\z"
+	cp = anchored_regex =
+		malloc(len + strlen(REPREFIX) + strlen(RESUFFIX) + 1);
 	if (!anchored_regex) {
 		__pthread_mutex_unlock(&spec->regex_lock);
 		snprintf(errbuf, errbuf_size, "out of memory");
 		return -1;
 	}
 
-	/* Create ^...$ regexp.  */
-	*cp++ = '^';
-	memcpy(cp, reg_buf, len);
-	cp += len;
-	*cp++ = '$';
+	/* Create anchored regexp.  */
+	cp = mempcpy(cp, REPREFIX, strlen(REPREFIX));
+	cp = mempcpy(cp, reg_buf, len);
+	cp = mempcpy(cp, RESUFFIX, strlen(RESUFFIX));
 	*cp = '\0';
+#undef REPREFIX
+#undef RESUFFIX
 
 	/* Compile the regular expression. */
 	rc = regex_prepare_data(&spec->regex, anchored_regex, &error_data, jit);
