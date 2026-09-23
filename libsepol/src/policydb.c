@@ -1456,8 +1456,11 @@ int symtab_insert(policydb_t *pol, uint32_t sym, hashtab_key_t key,
 			return rc;
 		}
 	} else if (scope_datum->scope == SCOPE_DECL && scope == SCOPE_DECL) {
-		/* disallow multiple declarations for non-roles/users */
-		if (sym != SYM_ROLES && sym != SYM_USERS) {
+		/* disallow multiple declarations for non-roles/users, unless
+		 * the policy opted in to multiple declarations of types and
+		 * attributes */
+		if (sym != SYM_ROLES && sym != SYM_USERS &&
+		    !(sym == SYM_TYPES && pol->multiple_decls)) {
 			return -2;
 		}
 		/* Further confine that a role attribute can't have the same
