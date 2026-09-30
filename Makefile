@@ -61,6 +61,7 @@ distclean:
 
 # We shouldn't have any unformatted files in the repo without an explicit exception.
 FORMAT_SOURCE_FILES := $(shell find $(SUBDIRS) -type f \( -name '*.c' -o -name '*.h' \))
+FORMAT_SOURCE_FILES := $(filter-out libselinux/src/sha256.c libselinux/src/sha256.h,$(FORMAT_SOURCE_FILES))
 
 format:
 	$(CLANG_FORMAT) -i $(FORMAT_SOURCE_FILES)
