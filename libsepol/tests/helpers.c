@@ -84,3 +84,8 @@ avrule_decl_t *test_find_decl_by_sym(policydb_t *p, int symtab, const char *sym)
 
 	return p->decl_val_to_struct[scope->decl_ids[0] - 1];
 }
+
+int qstrcmp(const void *a, const void *b)
+{
+	return strcmp(*(char **)a, *(char **)b);
+}

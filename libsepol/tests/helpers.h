@@ -89,4 +89,9 @@ extern int test_load_policy(policydb_t *p, int policy_type, int mls,
 extern avrule_decl_t *test_find_decl_by_sym(policydb_t *p, int symtab,
 					    const char *sym);
 
+/*
+ * qsort comparator for an array of strings
+ */
+extern int qstrcmp(const void *a, const void *b);
+
 #endif
