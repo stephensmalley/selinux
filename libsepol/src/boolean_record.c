@@ -21,6 +21,11 @@ struct sepol_bool_key {
 int sepol_bool_key_create(sepol_handle_t *handle, const char *name,
 			  sepol_bool_key_t **key_ptr)
 {
+	if (!name) {
+		ERR(handle, "name is NULL");
+		return STATUS_ERR;
+	}
+
 	sepol_bool_key_t *tmp_key =
 		(sepol_bool_key_t *)malloc(sizeof(struct sepol_bool_key));
 
@@ -44,12 +49,17 @@ int sepol_bool_key_create(sepol_handle_t *handle, const char *name,
 
 void sepol_bool_key_unpack(const sepol_bool_key_t *key, const char **name)
 {
-	*name = key->name;
+	*name = key ? key->name : NULL;
 }
 
 int sepol_bool_key_extract(sepol_handle_t *handle, const sepol_bool_t *boolean,
 			   sepol_bool_key_t **key_ptr)
 {
+	if (!boolean || !boolean->name) {
+		ERR(handle, "boolean name is NULL");
+		return STATUS_ERR;
+	}
+
 	if (sepol_bool_key_create(handle, boolean->name, key_ptr) < 0) {
 		ERR(handle, "could not extract key from boolean %s",
 		    boolean->name);
@@ -69,24 +79,32 @@ void sepol_bool_key_free(sepol_bool_key_t *key)
 
 int sepol_bool_compare(const sepol_bool_t *boolean, const sepol_bool_key_t *key)
 {
+	if (!boolean || !key || !boolean->name || !key->name)
+		return -1;
 	return strcmp(boolean->name, key->name);
 }
 
 int sepol_bool_compare2(const sepol_bool_t *boolean,
 			const sepol_bool_t *boolean2)
 {
+	if (!boolean || !boolean2 || !boolean->name || !boolean2->name)
+		return -1;
 	return strcmp(boolean->name, boolean2->name);
 }
 
 /* Name */
 const char *sepol_bool_get_name(const sepol_bool_t *boolean)
 {
-	return boolean->name;
+	return boolean ? boolean->name : NULL;
 }
 
 int sepol_bool_set_name(sepol_handle_t *handle, sepol_bool_t *boolean,
 			const char *name)
 {
+	if (!boolean || !name) {
+		ERR(handle, "boolean or name is NULL");
+		return STATUS_ERR;
+	}
 	char *tmp_name = strdup(name);
 	if (!tmp_name) {
 		ERR(handle, "out of memory, could not set boolean name");
@@ -100,22 +118,29 @@ int sepol_bool_set_name(sepol_handle_t *handle, sepol_bool_t *boolean,
 /* Value */
 int sepol_bool_get_value(const sepol_bool_t *boolean)
 {
-	return boolean->value;
+	return boolean ? boolean->value : 0;
 }
 
 void sepol_bool_set_value(sepol_bool_t *boolean, int value)
 {
+	if (!boolean)
+		return;
 	boolean->value = value;
 }
 
 /* Create */
 int sepol_bool_create(sepol_handle_t *handle, sepol_bool_t **bool_ptr)
 {
-	sepol_bool_t *boolean = (sepol_bool_t *)malloc(sizeof(sepol_bool_t));
+	sepol_bool_t *boolean;
 
+	if (!bool_ptr)
+		return STATUS_ERR;
+
+	boolean = (sepol_bool_t *)malloc(sizeof(sepol_bool_t));
 	if (!boolean) {
 		ERR(handle, "out of memory, "
 			    "could not create boolean record");
+		*bool_ptr = NULL;
 		return STATUS_ERR;
 	}
 
@@ -132,6 +157,13 @@ int sepol_bool_clone(sepol_handle_t *handle, const sepol_bool_t *boolean,
 {
 	sepol_bool_t *new_bool = NULL;
 
+	if (!bool_ptr)
+		return STATUS_ERR;
+	if (!boolean) {
+		*bool_ptr = NULL;
+		return STATUS_ERR;
+	}
+
 	if (sepol_bool_create(handle, &new_bool) < 0)
 		goto err;
 
@@ -146,6 +178,7 @@ int sepol_bool_clone(sepol_handle_t *handle, const sepol_bool_t *boolean,
 err:
 	ERR(handle, "could not clone boolean record");
 	sepol_bool_free(new_bool);
+	*bool_ptr = NULL;
 	return STATUS_ERR;
 }
 
