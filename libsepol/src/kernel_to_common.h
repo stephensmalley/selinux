@@ -12,29 +12,11 @@
 #include <sepol/policydb/avtab.h>
 #include <sepol/policydb/policydb.h>
 
+#include "initial_sids.h"
+
 #define STACK_SIZE 16
 #define DEFAULT_LEVEL "systemlow"
 #define DEFAULT_OBJECT "object_r"
-
-// initial sid names aren't actually stored in the pp files, need to a have
-// a mapping, taken from the linux kernel
-static const char *const selinux_sid_to_str[] = {
-	NULL,	"kernel", "security",	"unlabeled", NULL,    "file",
-	NULL,	"init",	  "any_socket", "port",	     "netif", "netmsg",
-	"node", NULL,	  NULL,		NULL,	     NULL,    NULL,
-	NULL,	NULL,	  NULL,		NULL,	     NULL,    NULL,
-	NULL,	NULL,	  NULL,		"devnull",
-};
-
-#define SELINUX_SID_SZ \
-	(sizeof(selinux_sid_to_str) / sizeof(selinux_sid_to_str[0]))
-
-static const char *const xen_sid_to_str[] = {
-	"null",	  "xen",   "dom0", "domio",  "domxen", "unlabeled", "security",
-	"ioport", "iomem", "irq",  "device", "domU",   "domDM",
-};
-
-#define XEN_SID_SZ (sizeof(xen_sid_to_str) / sizeof(xen_sid_to_str[0]))
 
 static const uint32_t avtab_flavors[] = {
 	AVTAB_ALLOWED,
