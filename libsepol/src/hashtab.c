@@ -257,6 +257,9 @@ void hashtab_hash_eval(hashtab_t h, const char *tag)
 	size_t chain_len, slots_used, max_chain_len, chain2_len_sum;
 	hashtab_ptr_t cur;
 
+	if (!h)
+		return;
+
 	slots_used = 0;
 	max_chain_len = 0;
 	chain2_len_sum = 0;
@@ -279,4 +282,49 @@ void hashtab_hash_eval(hashtab_t h, const char *tag)
 	printf("%s:  %d entries and %zu/%d buckets used, longest chain length %zu, chain length^2 %zu, normalized chain length^2 %.2f\n",
 	       tag, h->nel, slots_used, h->size, max_chain_len, chain2_len_sum,
 	       chain2_len_sum ? (float)chain2_len_sum / slots_used : 0);
+}
+
+static void hashtab_iter_advance(hashtab_iter_t *iter)
+{
+	if (!iter->table || iter->bucket >= iter->table->size)
+		return;
+	if (iter->curr && iter->curr->next) {
+		iter->curr = iter->curr->next;
+		return;
+	}
+	iter->curr = NULL;
+	do {
+		iter->bucket++;
+	} while (iter->bucket < iter->table->size &&
+		 (iter->curr = iter->table->htable[iter->bucket]) == NULL);
+}
+
+void hashtab_iter_init(hashtab_t table, hashtab_iter_t *iter)
+{
+	if (!iter)
+		return;
+	memset(iter, 0, sizeof(hashtab_iter_t));
+	if (!table)
+		return;
+	iter->table = table;
+	iter->curr = table->size > 0 ? table->htable[0] : NULL;
+	if (!iter->curr)
+		hashtab_iter_advance(iter);
+}
+
+void hashtab_iter_next(hashtab_iter_t *iter, hashtab_key_t *key,
+		       hashtab_datum_t *datum)
+{
+	if (!iter || !key || !datum)
+		return;
+
+	hashtab_node_t *node = iter->curr;
+	hashtab_iter_advance(iter);
+	if (node) {
+		*key = node->key;
+		*datum = node->datum;
+	} else {
+		*key = NULL;
+		*datum = NULL;
+	}
 }

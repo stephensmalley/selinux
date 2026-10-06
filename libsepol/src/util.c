@@ -27,7 +27,9 @@
 #include <sepol/policydb/flask_types.h>
 #include <sepol/policydb/policydb.h>
 #include <sepol/policydb/util.h>
+#include <string.h>
 
+#include "debug.h"
 #include "private.h"
 
 struct val_to_name {
@@ -87,13 +89,18 @@ char *sepol_av_to_string(const policydb_t *policydbp,
 			 sepol_access_vector_t av)
 {
 	struct val_to_name v;
-	const class_datum_t *cladatum =
-		policydbp->class_val_to_struct[tclass - 1];
+	const class_datum_t *cladatum;
 	uint32_t i;
 	int rc;
 	char *buffer = NULL, *p;
 	int len;
 	size_t remaining, size = 64;
+
+	if (!policydbp || tclass < 1 || tclass > policydbp->p_classes.nprim)
+		return NULL;
+	cladatum = policydbp->class_val_to_struct[tclass - 1];
+	if (!cladatum)
+		return NULL;
 
 retry:
 	if (__builtin_mul_overflow(size, 2, &size))
@@ -331,4 +338,106 @@ int tokenize(const char *line_buf, char delim, int num_args, ...)
 exit:
 	va_end(ap);
 	return items;
+}
+
+int string_list_contains(char **const list, uint32_t num, const char *string)
+{
+	if (!list || !string)
+		return 0;
+	for (uint32_t i = 0; i < num; i++) {
+		if (!strcmp(list[i], string))
+			return 1;
+	}
+	return 0;
+}
+
+int string_list_add(sepol_handle_t *handle, char ***list, uint32_t *num,
+		    const char *string)
+{
+	if (!list || !num || !string)
+		return STATUS_ERR;
+	if (*num == UINT32_MAX)
+		goto omem;
+	char **tmp = reallocarray(*list, *num + 1, sizeof(char *));
+	if (!tmp)
+		goto omem;
+	*list = tmp;
+
+	(*list)[*num] = strdup(string);
+	if (!(*list)[*num])
+		goto omem;
+	(*num)++;
+
+	return STATUS_SUCCESS;
+
+omem:
+	ERR(handle, "out of memory");
+	/* tmp is assigned to list, no separate free needed */
+	return STATUS_ERR;
+}
+
+int string_list_add_unique(sepol_handle_t *handle, char ***list, uint32_t *num,
+			   const char *string)
+{
+	if (!list || !num || !string)
+		return STATUS_ERR;
+	if (string_list_contains(*list, *num, string))
+		return STATUS_SUCCESS;
+	return string_list_add(handle, list, num, string);
+}
+
+int string_list_del(char **list, uint32_t *num, const char *string)
+{
+	if (!num || !string)
+		return STATUS_ERR;
+	if (!list)
+		return (*num == 0) ? STATUS_SUCCESS : STATUS_ERR;
+
+	for (uint32_t i = 0; i < *num;) {
+		if (!strcmp(list[i], string)) {
+			free(list[i]);
+			(*num)--;
+			if (i < *num)
+				list[i] = list[*num];
+		} else {
+			i++;
+		}
+	}
+	return STATUS_SUCCESS;
+}
+
+/* shallow copy, does not copy strings in the list */
+int string_list_scopy(sepol_handle_t *handle, char **list, uint32_t num,
+		      const char ***copy, uint32_t *num_copy)
+{
+	if (!copy || !num_copy)
+		return STATUS_ERR;
+
+	*copy = NULL;
+	*num_copy = 0;
+
+	if (num == 0)
+		return STATUS_SUCCESS;
+
+	if (!list)
+		return STATUS_ERR;
+
+	const char **tmp = calloc(num, sizeof(char *));
+	if (!tmp) {
+		ERR(handle, "out of memory");
+		return STATUS_ERR;
+	}
+
+	for (uint32_t i = 0; i < num; i++)
+		tmp[i] = list[i];
+
+	*copy = tmp;
+	*num_copy = num;
+
+	return STATUS_SUCCESS;
+}
+
+int strcmp_qsort(const void *str1, const void *str2)
+{
+	return strcmp(*((const char **)str1), *((const char **)str2));
 }

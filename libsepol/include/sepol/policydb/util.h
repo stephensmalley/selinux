@@ -35,13 +35,33 @@ extern char *sepol_av_to_string(const policydb_t *policydbp,
 				sepol_security_class_t tclass,
 				sepol_access_vector_t av);
 
-char *sepol_extended_perms_to_string(const avtab_extended_perms_t *xperms);
+extern char *
+sepol_extended_perms_to_string(const avtab_extended_perms_t *xperms);
 
 /*
  * The tokenize function may be used to
  * replace sscanf
  */
 extern int tokenize(const char *line_buf, char delim, int num_args, ...);
+
+extern int string_list_contains(char **const list, uint32_t num,
+				const char *string);
+extern int string_list_add(sepol_handle_t *handle, char ***list, uint32_t *num,
+			   const char *string);
+/*
+ * Like string_list_add(), but a no-op success (STATUS_SUCCESS without
+ * modifying the list) if string already appears in the list.
+ */
+extern int string_list_add_unique(sepol_handle_t *handle, char ***list,
+				  uint32_t *num, const char *string);
+extern int string_list_del(char **list, uint32_t *num, const char *string);
+extern int string_list_scopy(sepol_handle_t *handle, char **list, uint32_t num,
+			     const char ***copy, uint32_t *num_copy);
+
+/*
+ * Compare indirect strings (in qsort)
+ */
+extern int strcmp_qsort(const void *str1, const void *str2);
 
 #ifdef __cplusplus
 }

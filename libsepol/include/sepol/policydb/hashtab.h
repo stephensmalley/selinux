@@ -110,6 +110,21 @@ extern int hashtab_map(hashtab_t h,
 
 extern void hashtab_hash_eval(hashtab_t h, const char *tag);
 
+struct hashtab_iter {
+	hashtab_t table;
+	hashtab_node_t *curr;
+	unsigned int bucket;
+};
+typedef struct hashtab_iter hashtab_iter_t;
+
+extern void hashtab_iter_init(hashtab_t table, hashtab_iter_t *iter);
+/*
+   Advances to the next item in hashtab, sets both pointers to NULL if no items
+   are left
+ */
+extern void hashtab_iter_next(hashtab_iter_t *iter, hashtab_key_t *key,
+			      hashtab_datum_t *datum);
+
 #ifdef __cplusplus
 }
 #endif

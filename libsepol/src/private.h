@@ -103,6 +103,29 @@ extern size_t put_entry(const void *ptr, size_t size, size_t n,
 			struct policy_file *fp);
 extern int str_read(char **strp, struct policy_file *fp, size_t len);
 
+/*
+ * Generate a sepol_*_value_to_name() implementation: bounds-check "value"
+ * against p->p.NPRIM_FIELD.nprim and index p->p.VAL_TO_NAME_FIELD[value - 1].
+ * All sepol_*_value_to_name() functions share this exact shape, differing
+ * only in which symbol table / reverse-lookup array they use.
+ */
+#define DEFINE_VALUE_TO_NAME(fn, desc, nprim_field, val_to_name_field)   \
+	int fn(sepol_handle_t *handle, const sepol_policydb_t *p,        \
+	       uint32_t value, const char **name)                        \
+	{                                                                \
+		if (!p || !name)                                         \
+			return STATUS_ERR;                               \
+                                                                         \
+		if (value < 1 || value > p->p.nprim_field.nprim) {       \
+			ERR(handle, "invalid " desc " value %u", value); \
+			*name = NULL;                                    \
+			return STATUS_ERR;                               \
+		}                                                        \
+                                                                         \
+		*name = p->p.val_to_name_field[value - 1];               \
+		return STATUS_SUCCESS;                                   \
+	}
+
 #ifndef HAVE_REALLOCARRAY
 static inline void *reallocarray(void *ptr, size_t nmemb, size_t size)
 {

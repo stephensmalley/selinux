@@ -81,6 +81,24 @@ static inline int ebitmap_node_get_bit(const ebitmap_node_t *n,
 	ebitmap_for_each_bit(e, n, bit)          \
 		if (ebitmap_node_get_bit(n, bit))
 
+/*
+ * Resumable version of ebitmap_for_each_positive_bit(): advances the node
+ * and bit position to the next set bit at or after the current bit
+ * (exclusive of highbit), returning 1 if one was found or 0 if the walk
+ * is exhausted. Used by stateful iterators that need to pause/resume the
+ * walk across calls rather than consuming the whole bitmap in one loop.
+ */
+static inline int ebitmap_find_next_set_bit(ebitmap_node_t **n, uint32_t *bit,
+					    uint32_t highbit)
+{
+	while (*bit < highbit) {
+		if (ebitmap_node_get_bit(*n, *bit))
+			return 1;
+		*bit = ebitmap_next(n, *bit);
+	}
+	return 0;
+}
+
 extern int ebitmap_cmp(const ebitmap_t *e1, const ebitmap_t *e2);
 extern int ebitmap_or(ebitmap_t *dst, const ebitmap_t *e1, const ebitmap_t *e2);
 extern int ebitmap_union(ebitmap_t *dst, const ebitmap_t *e1);
