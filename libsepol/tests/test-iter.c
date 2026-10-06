@@ -13,6 +13,7 @@
 #include "test-iter-types.h"
 #include "test-iter-users.h"
 #include "test-iter-roles.h"
+#include "test-iter-classes.h"
 
 extern int mls;
 
@@ -105,6 +106,12 @@ int iter_add_tests(CU_pSuite suite)
 		return CU_get_error();
 	if (CU_add_test(suite, "iter_roles_non_empty",
 			test_iter_roles_non_empty) == NULL)
+		return CU_get_error();
+	if (CU_add_test(suite, "iter_classes_empty", test_iter_classes_empty) ==
+	    NULL)
+		return CU_get_error();
+	if (CU_add_test(suite, "iter_classes_non_empty",
+			test_iter_classes_non_empty) == NULL)
 		return CU_get_error();
 	return 0;
 }
