@@ -11,6 +11,7 @@
 
 #include "parse_util.h"
 #include "test-iter-types.h"
+#include "test-iter-users.h"
 
 extern int mls;
 
@@ -91,6 +92,12 @@ int iter_add_tests(CU_pSuite suite)
 		return CU_get_error();
 	if (CU_add_test(suite, "iter_types_non_empty",
 			test_iter_types_non_empty) == NULL)
+		return CU_get_error();
+	if (CU_add_test(suite, "iter_users_empty", test_iter_users_empty) ==
+	    NULL)
+		return CU_get_error();
+	if (CU_add_test(suite, "iter_users_non_empty",
+			test_iter_users_non_empty) == NULL)
 		return CU_get_error();
 	return 0;
 }

@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -31,12 +32,21 @@ struct sepol_user_key {
 int sepol_user_key_create(sepol_handle_t *handle, const char *name,
 			  sepol_user_key_t **key_ptr)
 {
+	if (!key_ptr)
+		return STATUS_ERR;
+	if (!name) {
+		ERR(handle, "name is NULL");
+		*key_ptr = NULL;
+		return STATUS_ERR;
+	}
+
 	sepol_user_key_t *tmp_key =
 		(sepol_user_key_t *)malloc(sizeof(sepol_user_key_t));
 
 	if (!tmp_key) {
 		ERR(handle, "out of memory, "
 			    "could not create selinux user key");
+		*key_ptr = NULL;
 		return STATUS_ERR;
 	}
 
@@ -44,6 +54,7 @@ int sepol_user_key_create(sepol_handle_t *handle, const char *name,
 	if (!tmp_key->name) {
 		ERR(handle, "out of memory, could not create selinux user key");
 		free(tmp_key);
+		*key_ptr = NULL;
 		return STATUS_ERR;
 	}
 
@@ -53,12 +64,17 @@ int sepol_user_key_create(sepol_handle_t *handle, const char *name,
 
 void sepol_user_key_unpack(const sepol_user_key_t *key, const char **name)
 {
-	*name = key->name;
+	*name = key ? key->name : NULL;
 }
 
 int sepol_user_key_extract(sepol_handle_t *handle, const sepol_user_t *user,
 			   sepol_user_key_t **key_ptr)
 {
+	if (!user || !user->name) {
+		ERR(handle, "user name is NULL");
+		return STATUS_ERR;
+	}
+
 	if (sepol_user_key_create(handle, user->name, key_ptr) < 0) {
 		ERR(handle, "could not extract key from user %s", user->name);
 		return STATUS_ERR;
@@ -77,23 +93,31 @@ void sepol_user_key_free(sepol_user_key_t *key)
 
 int sepol_user_compare(const sepol_user_t *user, const sepol_user_key_t *key)
 {
+	if (!user || !key || !user->name || !key->name)
+		return -1;
 	return strcmp(user->name, key->name);
 }
 
 int sepol_user_compare2(const sepol_user_t *user, const sepol_user_t *user2)
 {
+	if (!user || !user2 || !user->name || !user2->name)
+		return -1;
 	return strcmp(user->name, user2->name);
 }
 
 /* Name */
 const char *sepol_user_get_name(const sepol_user_t *user)
 {
-	return user->name;
+	return user ? user->name : NULL;
 }
 
 int sepol_user_set_name(sepol_handle_t *handle, sepol_user_t *user,
 			const char *name)
 {
+	if (!user || !name) {
+		ERR(handle, "user or name is NULL");
+		return STATUS_ERR;
+	}
 	char *tmp_name = strdup(name);
 	if (!tmp_name) {
 		ERR(handle, "out of memory, could not set name");
@@ -107,12 +131,16 @@ int sepol_user_set_name(sepol_handle_t *handle, sepol_user_t *user,
 /* MLS */
 const char *sepol_user_get_mlslevel(const sepol_user_t *user)
 {
-	return user->mls_level;
+	return user ? user->mls_level : NULL;
 }
 
 int sepol_user_set_mlslevel(sepol_handle_t *handle, sepol_user_t *user,
 			    const char *mls_level)
 {
+	if (!user || !mls_level) {
+		ERR(handle, "user or mls_level is NULL");
+		return STATUS_ERR;
+	}
 	char *tmp_mls_level = strdup(mls_level);
 	if (!tmp_mls_level) {
 		ERR(handle, "out of memory, "
@@ -126,12 +154,16 @@ int sepol_user_set_mlslevel(sepol_handle_t *handle, sepol_user_t *user,
 
 const char *sepol_user_get_mlsrange(const sepol_user_t *user)
 {
-	return user->mls_range;
+	return user ? user->mls_range : NULL;
 }
 
 int sepol_user_set_mlsrange(sepol_handle_t *handle, sepol_user_t *user,
 			    const char *mls_range)
 {
+	if (!user || !mls_range) {
+		ERR(handle, "user or mls_range is NULL");
+		return STATUS_ERR;
+	}
 	char *tmp_mls_range = strdup(mls_range);
 	if (!tmp_mls_range) {
 		ERR(handle, "out of memory, "
@@ -146,17 +178,25 @@ int sepol_user_set_mlsrange(sepol_handle_t *handle, sepol_user_t *user,
 /* Roles */
 int sepol_user_get_num_roles(const sepol_user_t *user)
 {
-	return user->num_roles;
+	return user ? (int)user->num_roles : 0;
 }
 
 int sepol_user_add_role(sepol_handle_t *handle, sepol_user_t *user,
 			const char *role)
 {
-	char *role_cp;
+	char *role_cp = NULL;
 	char **roles_realloc = NULL;
+
+	if (!user || !role) {
+		ERR(handle, "user or role is NULL");
+		return STATUS_ERR;
+	}
 
 	if (sepol_user_has_role(user, role))
 		return STATUS_SUCCESS;
+
+	if (user->num_roles == UINT_MAX)
+		goto omem;
 
 	role_cp = strdup(role);
 	if (!role_cp)
@@ -184,6 +224,9 @@ int sepol_user_has_role(const sepol_user_t *user, const char *role)
 {
 	unsigned int i;
 
+	if (!user || !role)
+		return 0;
+
 	for (i = 0; i < user->num_roles; i++)
 		if (!strcmp(user->roles[i], role))
 			return 1;
@@ -196,9 +239,14 @@ int sepol_user_set_roles(sepol_handle_t *handle, sepol_user_t *user,
 	unsigned int i;
 	char **tmp_roles = NULL;
 
+	if (!user || (num_roles > 0 && !roles_arr)) {
+		ERR(handle, "user or roles_arr is NULL");
+		return STATUS_ERR;
+	}
+
 	if (num_roles > 0) {
 		/* First, make a copy */
-		tmp_roles = (char **)calloc(1, sizeof(char *) * num_roles);
+		tmp_roles = (char **)calloc(num_roles, sizeof(char *));
 		if (!tmp_roles)
 			goto omem;
 
@@ -238,8 +286,23 @@ int sepol_user_get_roles(sepol_handle_t *handle, const sepol_user_t *user,
 			 const char ***roles_arr, unsigned int *num_roles)
 {
 	unsigned int i;
-	const char **tmp_roles =
-		(const char **)calloc(user->num_roles, sizeof(char *));
+	const char **tmp_roles;
+
+	if (!roles_arr || !num_roles)
+		return STATUS_ERR;
+	if (!user) {
+		*roles_arr = NULL;
+		*num_roles = 0;
+		return STATUS_ERR;
+	}
+
+	if (user->num_roles == 0) {
+		*roles_arr = NULL;
+		*num_roles = 0;
+		return STATUS_SUCCESS;
+	}
+
+	tmp_roles = (const char **)calloc(user->num_roles, sizeof(char *));
 	if (!tmp_roles)
 		goto omem;
 
@@ -262,6 +325,10 @@ omem:
 void sepol_user_del_role(sepol_user_t *user, const char *role)
 {
 	unsigned int i;
+
+	if (!user || !role)
+		return;
+
 	for (i = 0; i < user->num_roles; i++) {
 		if (!strcmp(user->roles[i], role)) {
 			free(user->roles[i]);
@@ -275,11 +342,16 @@ void sepol_user_del_role(sepol_user_t *user, const char *role)
 /* Create */
 int sepol_user_create(sepol_handle_t *handle, sepol_user_t **user_ptr)
 {
-	sepol_user_t *user = (sepol_user_t *)malloc(sizeof(sepol_user_t));
+	sepol_user_t *user;
 
+	if (!user_ptr)
+		return STATUS_ERR;
+
+	user = (sepol_user_t *)malloc(sizeof(sepol_user_t));
 	if (!user) {
 		ERR(handle, "out of memory, "
 			    "could not create selinux user record");
+		*user_ptr = NULL;
 		return STATUS_ERR;
 	}
 
@@ -299,6 +371,13 @@ int sepol_user_clone(sepol_handle_t *handle, const sepol_user_t *user,
 {
 	sepol_user_t *new_user = NULL;
 	unsigned int i;
+
+	if (!user_ptr)
+		return STATUS_ERR;
+	if (!user) {
+		*user_ptr = NULL;
+		return STATUS_ERR;
+	}
 
 	if (sepol_user_create(handle, &new_user) < 0)
 		goto err;
@@ -325,6 +404,7 @@ int sepol_user_clone(sepol_handle_t *handle, const sepol_user_t *user,
 err:
 	ERR(handle, "could not clone selinux user record");
 	sepol_user_free(new_user);
+	*user_ptr = NULL;
 	return STATUS_ERR;
 }
 
