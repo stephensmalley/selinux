@@ -43,6 +43,8 @@
 #include <sys/types.h>
 #include <stdint.h>
 
+#include <sepol/constants.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -51,32 +53,11 @@ typedef struct avtab_key {
 	uint16_t source_type;
 	uint16_t target_type;
 	uint16_t target_class;
-#define AVTAB_ALLOWED 0x0001
-#define AVTAB_AUDITALLOW 0x0002
-#define AVTAB_AUDITDENY 0x0004
-#define AVTAB_NEVERALLOW 0x0080
-#define AVTAB_AV (AVTAB_ALLOWED | AVTAB_AUDITALLOW | AVTAB_AUDITDENY)
-#define AVTAB_TRANSITION 0x0010
-#define AVTAB_MEMBER 0x0020
-#define AVTAB_CHANGE 0x0040
-#define AVTAB_TYPE (AVTAB_TRANSITION | AVTAB_MEMBER | AVTAB_CHANGE)
-#define AVTAB_XPERMS_ALLOWED 0x0100
-#define AVTAB_XPERMS_AUDITALLOW 0x0200
-#define AVTAB_XPERMS_DONTAUDIT 0x0400
-#define AVTAB_XPERMS_NEVERALLOW 0x0800
-#define AVTAB_XPERMS                                      \
-	(AVTAB_XPERMS_ALLOWED | AVTAB_XPERMS_AUDITALLOW | \
-	 AVTAB_XPERMS_DONTAUDIT)
-#define AVTAB_ENABLED_OLD 0x80000000
-#define AVTAB_ENABLED 0x8000 /* reserved for used in cond_avtab */
-	uint16_t specified; /* what fields are specified */
+	uint16_t specified; /* what fields are specified; see AVTAB_* in sepol/constants.h */
 } avtab_key_t;
 
 typedef struct avtab_extended_perms {
-#define AVTAB_XPERMS_IOCTLFUNCTION 0x01
-#define AVTAB_XPERMS_IOCTLDRIVER 0x02
-#define AVTAB_XPERMS_NLMSG 0x03
-	/* extension of the avtab_key specified */
+	/* extension of the avtab_key specified; see AVTAB_XPERMS_* in sepol/constants.h */
 	uint8_t specified;
 	uint8_t driver;
 	uint32_t perms[8];
@@ -138,12 +119,6 @@ extern avtab_ptr_t avtab_insert_with_parse_context(avtab_t *h, avtab_key_t *key,
 extern avtab_ptr_t avtab_search_node(avtab_t *h, avtab_key_t *key);
 
 extern avtab_ptr_t avtab_search_node_next(avtab_ptr_t node, int specified);
-
-#define MAX_AVTAB_HASH_BITS 20
-#define MAX_AVTAB_HASH_BUCKETS (1 << MAX_AVTAB_HASH_BITS)
-#define MAX_AVTAB_HASH_MASK (MAX_AVTAB_HASH_BUCKETS - 1)
-/* avtab_alloc uses one bucket per 2-4 elements, so adjust to get maximum buckets */
-#define MAX_AVTAB_SIZE (MAX_AVTAB_HASH_BUCKETS << 1)
 
 #ifdef __cplusplus
 }

@@ -12,6 +12,9 @@
  * Security server interface.
  */
 
+#include <sepol/constants.h>
+#include <sepol/context_record.h>
+#include <sepol/handle.h>
 #include <sepol/policydb/flask_types.h>
 #include <sepol/policydb/policydb.h>
 #include <stddef.h>
@@ -147,6 +150,16 @@ extern int sepol_sid_to_context(sepol_security_id_t sid, /* IN */
 				size_t *scontext_len); /* OUT */
 
 /*
+ * Allocate and return a new sepol_context_t with the context associated
+ * with `sid'. The caller owns *record and must free it with
+ * sepol_context_free().
+ * Requires an active policydb and sidtab (see sepol_set_policydb / sepol_set_sidtab).
+ */
+extern int sepol_sid_to_context_record(sepol_handle_t *handle,
+				       sepol_security_id_t sid,
+				       sepol_context_t **record);
+
+/*
  * Return a SID associated with the security context that
  * has the string representation specified by `scontext'.
  */
@@ -220,12 +233,8 @@ extern int sepol_node_sid(uint16_t domain, void *addr, size_t addrlen,
  * Return a value indicating how to handle labeling for the
  * the specified filesystem type, and optionally return a SID
  * for the filesystem object.  
+ * (SECURITY_FS_USE_* constants are in <sepol/constants.h>.)
  */
-#define SECURITY_FS_USE_XATTR 1 /* use xattr */
-#define SECURITY_FS_USE_TRANS 2 /* use transition SIDs, e.g. devpts/tmpfs */
-#define SECURITY_FS_USE_TASK 3 /* use task SIDs, e.g. pipefs/sockfs */
-#define SECURITY_FS_USE_GENFS 4 /* use the genfs support */
-#define SECURITY_FS_USE_NONE 5 /* no labeling support */
 extern int sepol_fs_use(const char *fstype, /* IN */
 			unsigned int *behavior, /* OUT */
 			sepol_security_id_t *sid); /* OUT  */

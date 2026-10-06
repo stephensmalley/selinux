@@ -57,6 +57,7 @@
 #include <sepol/policydb.h>
 
 #include <sepol/policydb/flask_types.h>
+#include <sepol/constants.h>
 #include <sepol/policydb/symtab.h>
 #include <sepol/policydb/avtab.h>
 #include <sepol/policydb/context.h>
@@ -252,15 +253,9 @@ typedef struct class_perm_node {
 	struct class_perm_node *next;
 } class_perm_node_t;
 
-#define xperm_test(x, p) (UINT32_C(1) & ((p)[(x) >> 5] >> ((x) & 0x1f)))
-#define xperm_set(x, p) ((p)[(x) >> 5] |= (UINT32_C(1) << ((x) & 0x1f)))
-#define xperm_clear(x, p) ((p)[(x) >> 5] &= ~(UINT32_C(1) << ((x) & 0x1f)))
-#define EXTENDED_PERMS_LEN 8
+/* xperm_*, EXTENDED_PERMS_LEN, AVRULE_*, RULE_*: <sepol/constants.h> */
 
 typedef struct av_extended_perms {
-#define AVRULE_XPERMS_IOCTLFUNCTION 0x01
-#define AVRULE_XPERMS_IOCTLDRIVER 0x02
-#define AVRULE_XPERMS_NLMSG 0x03
 	uint8_t specified;
 	uint8_t driver;
 	/* 256 bits of permissions */
@@ -268,30 +263,8 @@ typedef struct av_extended_perms {
 } av_extended_perms_t;
 
 typedef struct avrule {
-/* these typedefs are almost exactly the same as those in avtab.h - they are
- * here because of the need to include neverallow and dontaudit messages */
-#define AVRULE_ALLOWED AVTAB_ALLOWED
-#define AVRULE_AUDITALLOW AVTAB_AUDITALLOW
-#define AVRULE_AUDITDENY AVTAB_AUDITDENY
-#define AVRULE_DONTAUDIT 0x0008
-#define AVRULE_NEVERALLOW AVTAB_NEVERALLOW
-#define AVRULE_AV                                                \
-	(AVRULE_ALLOWED | AVRULE_AUDITALLOW | AVRULE_AUDITDENY | \
-	 AVRULE_DONTAUDIT | AVRULE_NEVERALLOW)
-#define AVRULE_TRANSITION AVTAB_TRANSITION
-#define AVRULE_MEMBER AVTAB_MEMBER
-#define AVRULE_CHANGE AVTAB_CHANGE
-#define AVRULE_TYPE (AVRULE_TRANSITION | AVRULE_MEMBER | AVRULE_CHANGE)
-#define AVRULE_XPERMS_ALLOWED AVTAB_XPERMS_ALLOWED
-#define AVRULE_XPERMS_AUDITALLOW AVTAB_XPERMS_AUDITALLOW
-#define AVRULE_XPERMS_DONTAUDIT AVTAB_XPERMS_DONTAUDIT
-#define AVRULE_XPERMS_NEVERALLOW AVTAB_XPERMS_NEVERALLOW
-#define AVRULE_XPERMS                                       \
-	(AVRULE_XPERMS_ALLOWED | AVRULE_XPERMS_AUDITALLOW | \
-	 AVRULE_XPERMS_DONTAUDIT | AVRULE_XPERMS_NEVERALLOW)
+	/* specified: AVRULE_* (same bits as AVTAB_*); flags: RULE_* - sepol/constants.h */
 	uint32_t specified;
-#define RULE_SELF (1U << 0)
-#define RULE_NOTSELF (1U << 1)
 	uint32_t flags;
 	type_set_t stypes;
 	type_set_t ttypes;
@@ -395,38 +368,7 @@ typedef struct genfs {
 	struct genfs *next;
 } genfs_t;
 
-/* symbol table array indices */
-#define SYM_COMMONS 0
-#define SYM_CLASSES 1
-#define SYM_ROLES 2
-#define SYM_TYPES 3
-#define SYM_USERS 4
-#define SYM_BOOLS 5
-#define SYM_LEVELS 6
-#define SYM_CATS 7
-#define SYM_NUM 8
-
-/* object context array indices */
-#define OCON_ISID 0 /* initial SIDs */
-#define OCON_FS 1 /* unlabeled file systems */
-#define OCON_PORT 2 /* TCP and UDP port numbers */
-#define OCON_NETIF 3 /* network interfaces */
-#define OCON_NODE 4 /* nodes */
-#define OCON_FSUSE 5 /* fs_use */
-#define OCON_NODE6 6 /* IPv6 nodes */
-#define OCON_IBPKEY 7 /* Infiniband PKEY */
-#define OCON_IBENDPORT 8 /* Infiniband End Port */
-
-/* object context array indices for Xen */
-#define OCON_XEN_ISID 0 /* initial SIDs */
-#define OCON_XEN_PIRQ 1 /* physical irqs */
-#define OCON_XEN_IOPORT 2 /* io ports */
-#define OCON_XEN_IOMEM 3 /* io memory */
-#define OCON_XEN_PCIDEVICE 4 /* pci devices */
-#define OCON_XEN_DEVICETREE 5 /* device tree node */
-
-/* OCON_NUM needs to be the largest index in any platform's ocontext array */
-#define OCON_NUM 9
+/* SYM_*, OCON_*, OCON_NUM: <sepol/constants.h> */
 
 /* section: module information */
 
@@ -627,7 +569,7 @@ typedef struct policydb {
 	sepol_access_vector_t process_trans;
 	sepol_access_vector_t process_trans_dyntrans;
 
-	/* avrules whose line markes will be printed. Defaults to neverallow and
+	/* avrules whose line markers will be printed. Defaults to neverallow and
 	   neverallowxperm */
 	uint32_t line_marker_avrules;
 
