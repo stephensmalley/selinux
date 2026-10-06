@@ -2,8 +2,10 @@
 #include <string.h>
 #include <errno.h>
 
+#include <sepol/context.h>
 #include <sepol/policydb/policydb.h>
 #include <sepol/policydb/services.h>
+#include <sepol/policydb/sidtab.h>
 #include "context_internal.h"
 
 #include "debug.h"
@@ -33,10 +35,7 @@ int context_is_valid(const policydb_t *p, const context_struct_t *c)
 {
 	role_datum_t *role;
 	user_datum_t *usrdatum;
-	ebitmap_t types, roles;
 
-	ebitmap_init(&types);
-	ebitmap_init(&roles);
 	if (!c->role || c->role > p->p_roles.nprim)
 		return 0;
 
@@ -87,6 +86,11 @@ int context_to_string(sepol_handle_t *handle, const policydb_t *policydb,
 	char *scontext = NULL;
 	size_t scontext_len = 0;
 	char *ptr;
+
+	if (!context->user || context->user > policydb->p_users.nprim ||
+	    !context->role || context->role > policydb->p_roles.nprim ||
+	    !context->type || context->type > policydb->p_types.nprim)
+		return STATUS_ERR;
 
 	/* Compute the size of the context. */
 	scontext_len +=
@@ -142,10 +146,24 @@ int context_from_record(sepol_handle_t *handle, const policydb_t *policydb,
 	role_datum_t *roldatum;
 	type_datum_t *typdatum;
 
+	*cptr = NULL;
+
+	if (!record) {
+		ERR(handle, "context record is NULL");
+		return STATUS_ERR;
+	}
+
+	const char *user_str = sepol_context_get_user(record);
+	const char *role_str = sepol_context_get_role(record);
+	const char *type_str = sepol_context_get_type(record);
+	if (!user_str || !role_str || !type_str) {
+		ERR(handle, "context record has NULL user, role, or type");
+		return STATUS_ERR;
+	}
 	/* Hashtab keys are not constant - suppress warnings */
-	char *user = strdup(sepol_context_get_user(record));
-	char *role = strdup(sepol_context_get_role(record));
-	char *type = strdup(sepol_context_get_type(record));
+	char *user = strdup(user_str);
+	char *role = strdup(role_str);
+	char *type = strdup(type_str);
 	const char *mls = sepol_context_get_mls(record);
 
 	scontext = (context_struct_t *)malloc(sizeof(context_struct_t));
@@ -281,6 +299,8 @@ int context_from_string(sepol_handle_t *handle, const policydb_t *policydb,
 	char *con_cpy = NULL;
 	sepol_context_t *ctx_record = NULL;
 
+	*cptr = NULL;
+
 	if (zero_or_saturated(con_str_len)) {
 		ERR(handle, "Invalid context length");
 		goto err;
@@ -318,9 +338,252 @@ int sepol_context_check(sepol_handle_t *handle,
 			const sepol_policydb_t *policydb,
 			const sepol_context_t *context)
 {
+	if (!policydb || !context)
+		return STATUS_ERR;
+
 	context_struct_t *con = NULL;
 	int ret = context_from_record(handle, &policydb->p, &con, context);
-	context_destroy(con);
-	free(con);
+	if (con) {
+		context_destroy(con);
+		free(con);
+	}
 	return ret;
+}
+
+/*
+ * Populate ctx from policy-internal values (1-based) and optional MLS range text.
+ */
+static int values_prepare_context(sepol_handle_t *handle, const policydb_t *p,
+				  uint32_t user_val, uint32_t role_val,
+				  uint32_t type_val, const char *mls_range,
+				  context_struct_t *ctx)
+{
+	type_datum_t *typdatum;
+
+	if (user_val < 1 || user_val > p->p_users.nprim ||
+	    !p->p_user_val_to_name[user_val - 1]) {
+		ERR(handle, "invalid user value %u", user_val);
+		errno = EINVAL;
+		return STATUS_ERR;
+	}
+
+	if (role_val < 1 || role_val > p->p_roles.nprim ||
+	    !p->p_role_val_to_name[role_val - 1]) {
+		ERR(handle, "invalid role value %u", role_val);
+		errno = EINVAL;
+		return STATUS_ERR;
+	}
+
+	if (type_val < 1 || type_val > p->p_types.nprim ||
+	    !p->p_type_val_to_name[type_val - 1]) {
+		ERR(handle, "invalid type value %u", type_val);
+		errno = EINVAL;
+		return STATUS_ERR;
+	}
+
+	typdatum = p->type_val_to_struct[type_val - 1];
+	if (!typdatum || typdatum->flavor == TYPE_ATTRIB) {
+		ERR(handle, "invalid type value %u", type_val);
+		errno = EINVAL;
+		return STATUS_ERR;
+	}
+
+	ctx->user = user_val;
+	ctx->role = role_val;
+	ctx->type = type_val;
+
+	if (p->mls) {
+		if (!mls_range || !*mls_range) {
+			ERR(handle, "MLS is enabled but MLS range is missing");
+			errno = EINVAL;
+			return STATUS_ERR;
+		}
+		if (mls_from_string(handle, p, mls_range, ctx) < 0)
+			return STATUS_ERR;
+	} else {
+		if (mls_range && *mls_range) {
+			ERR(handle,
+			    "MLS is disabled, but MLS range \"%s\" was supplied",
+			    mls_range);
+			errno = EINVAL;
+			return STATUS_ERR;
+		}
+	}
+
+	if (!context_is_valid(p, ctx)) {
+		ERR(handle, "invalid security context from values");
+		errno = EINVAL;
+		return STATUS_ERR;
+	}
+
+	return STATUS_SUCCESS;
+}
+
+int sepol_values_to_context_string(sepol_handle_t *handle,
+				   const sepol_policydb_t *policydb,
+				   uint32_t user_val, uint32_t role_val,
+				   uint32_t type_val, const char *mls_range,
+				   char **out, size_t *out_len)
+{
+	const policydb_t *p;
+	context_struct_t ctx;
+	int rc;
+
+	if (!policydb || !out || !out_len)
+		return STATUS_ERR;
+
+	*out = NULL;
+	*out_len = 0;
+
+	p = &policydb->p;
+	context_init(&ctx);
+
+	rc = values_prepare_context(handle, p, user_val, role_val, type_val,
+				    mls_range, &ctx);
+	if (rc < 0)
+		goto out;
+
+	rc = context_to_string(handle, p, &ctx, out, out_len);
+out:
+	context_destroy(&ctx);
+	return rc;
+}
+
+int sepol_values_to_context_record(sepol_handle_t *handle,
+				   const sepol_policydb_t *policydb,
+				   uint32_t user_val, uint32_t role_val,
+				   uint32_t type_val, const char *mls_range,
+				   sepol_context_t **record)
+{
+	const policydb_t *p;
+	context_struct_t ctx;
+	int rc;
+
+	if (!policydb || !record)
+		return STATUS_ERR;
+
+	*record = NULL;
+
+	p = &policydb->p;
+	context_init(&ctx);
+
+	rc = values_prepare_context(handle, p, user_val, role_val, type_val,
+				    mls_range, &ctx);
+	if (rc < 0)
+		goto out;
+
+	rc = context_to_record(handle, p, &ctx, record);
+out:
+	context_destroy(&ctx);
+	return rc;
+}
+
+static int policydb_sid_lookup_context(sepol_handle_t *handle,
+				       const sepol_policydb_t *policydb,
+				       uint32_t sid, context_struct_t **ctx_out)
+{
+	sidtab_t sidtab;
+	context_struct_t *ctx;
+	int rc;
+
+	/*
+	 * handle may legitimately be NULL here, same as in
+	 * sepol_values_to_context_string()/_record() above: ERR()
+	 * (via msg_write()) falls back to sepol_compat_handle when handle
+	 * is NULL, and nothing else in this function dereferences handle
+	 * directly.
+	 */
+	if (!policydb || !ctx_out)
+		return STATUS_ERR;
+
+	*ctx_out = NULL;
+	memset(&sidtab, 0, sizeof(sidtab));
+
+	rc = policydb_load_isids((policydb_t *)&policydb->p, &sidtab);
+	if (rc < 0) {
+		ERR(handle, "failed to load initial SID table from policy");
+		/*
+		 * policydb_load_isids() may have partially populated sidtab
+		 * (sepol_sidtab_init() succeeded, then a later insert failed)
+		 * before returning an error; destroy it to avoid leaking the
+		 * hash table and any contexts already inserted into it.
+		 */
+		sepol_sidtab_destroy(&sidtab);
+		return STATUS_ERR;
+	}
+
+	ctx = sepol_sidtab_search(&sidtab, sid);
+	if (!ctx) {
+		ERR(handle, "SID %u not found in policy", sid);
+		sepol_sidtab_destroy(&sidtab);
+		return STATUS_ERR;
+	}
+
+	/*
+	 * context_to_string/record only read fields from ctx; deep-copy the
+	 * struct (context_cpy(), not a shallow assignment) so we can destroy
+	 * sidtab before returning without leaving *ctx_out's MLS range
+	 * pointing at ebitmap nodes that sepol_sidtab_destroy() just freed.
+	 */
+	*ctx_out = malloc(sizeof(**ctx_out));
+	if (!*ctx_out) {
+		ERR(handle, "out of memory");
+		sepol_sidtab_destroy(&sidtab);
+		return STATUS_ERR;
+	}
+	if (context_cpy(*ctx_out, ctx) < 0) {
+		ERR(handle, "out of memory");
+		free(*ctx_out);
+		*ctx_out = NULL;
+		sepol_sidtab_destroy(&sidtab);
+		return STATUS_ERR;
+	}
+	sepol_sidtab_destroy(&sidtab);
+	return STATUS_SUCCESS;
+}
+
+int sepol_policydb_sid_to_context_string(sepol_handle_t *handle,
+					 const sepol_policydb_t *policydb,
+					 uint32_t sid, char **out,
+					 size_t *out_len)
+{
+	context_struct_t *ctx = NULL;
+	int rc;
+
+	if (!out || !out_len)
+		return STATUS_ERR;
+
+	*out = NULL;
+	*out_len = 0;
+
+	rc = policydb_sid_lookup_context(handle, policydb, sid, &ctx);
+	if (rc < 0)
+		return rc;
+
+	rc = context_to_string(handle, &policydb->p, ctx, out, out_len);
+	context_destroy(ctx);
+	free(ctx);
+	return rc;
+}
+
+int sepol_policydb_sid_to_context_record(sepol_handle_t *handle,
+					 const sepol_policydb_t *policydb,
+					 uint32_t sid, sepol_context_t **record)
+{
+	context_struct_t *ctx = NULL;
+	int rc;
+
+	if (!record)
+		return STATUS_ERR;
+
+	*record = NULL;
+
+	rc = policydb_sid_lookup_context(handle, policydb, sid, &ctx);
+	if (rc < 0)
+		return rc;
+
+	rc = context_to_record(handle, &policydb->p, ctx, record);
+	context_destroy(ctx);
+	free(ctx);
+	return rc;
 }

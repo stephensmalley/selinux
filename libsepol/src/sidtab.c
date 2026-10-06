@@ -12,10 +12,20 @@
 #include <limits.h>
 #include <stdio.h>
 
+#include <sepol/policydb/policydb.h>
 #include <sepol/policydb/sidtab.h>
+#include <sepol/sid_table.h>
 
+#include "debug.h"
 #include "flask.h"
 #include "private.h"
+
+extern int sepol_set_sidtab(sidtab_t *s);
+extern sidtab_t *sepol_get_sidtab(void);
+
+struct sepol_sid_table {
+	sidtab_t tab;
+};
 
 #define SIDTAB_HASH(sid) (sid & SIDTAB_HASH_MASK)
 
@@ -286,6 +296,74 @@ void sepol_sidtab_shutdown(sidtab_t *s)
 	SIDTAB_LOCK(s);
 	s->shutdown = 1;
 	SIDTAB_UNLOCK(s);
+}
+
+sepol_sid_table_t *sepol_sid_table_new(void)
+{
+	sepol_sid_table_t *st;
+
+	st = calloc(1, sizeof(*st));
+	if (!st)
+		return NULL;
+	if (sepol_sidtab_init(&st->tab) < 0) {
+		free(st);
+		return NULL;
+	}
+	return st;
+}
+
+void sepol_sid_table_free(sepol_sid_table_t *tab)
+{
+	if (!tab)
+		return;
+	/*
+	 * Compare against the actual, currently-installed sidtab rather
+	 * than tracking "did we last install this via
+	 * sepol_sid_table_set_opaque()" in a separate variable: the latter
+	 * can desynchronize from reality if sepol_set_sidtab() is later
+	 * called directly (it is a separate public API), which would
+	 * otherwise cause this function to incorrectly clear an unrelated,
+	 * still-active global sidtab.
+	 */
+	if (sepol_get_sidtab() == &tab->tab)
+		sepol_set_sidtab(NULL);
+	sepol_sidtab_destroy(&tab->tab);
+	free(tab);
+}
+
+int sepol_sid_table_load_isids(sepol_sid_table_t *tab,
+			       sepol_policydb_t *policydb)
+{
+	sidtab_t tmp;
+	int rc;
+
+	if (!tab || !policydb)
+		return STATUS_ERR;
+
+	/*
+	 * Build the reloaded table into a local temporary first. Destroying
+	 * the caller's existing table before knowing whether the reload
+	 * even succeeds (policydb_load_isids() can fail on OOM or on a
+	 * malformed policydb with duplicate initial SIDs) would permanently
+	 * blank out a previously-valid SID table on failure, breaking every
+	 * subsequent sepol_sidtab_search() lookup with no way to recover.
+	 */
+	rc = policydb_load_isids(&policydb->p, &tmp);
+	if (rc) {
+		sepol_sidtab_destroy(&tmp);
+		return STATUS_ERR;
+	}
+
+	sepol_sidtab_destroy(&tab->tab);
+	sepol_sidtab_set(&tab->tab, &tmp);
+	return 0;
+}
+
+int sepol_sid_table_set_opaque(sepol_sid_table_t *tab)
+{
+	if (!tab)
+		return STATUS_ERR;
+	return sepol_set_sidtab(&tab->tab);
 }
 
 /* FLASK */

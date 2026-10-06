@@ -24,12 +24,14 @@ struct sepol_context {
 /* User */
 const char *sepol_context_get_user(const sepol_context_t *con)
 {
-	return con->user;
+	return con ? con->user : NULL;
 }
 
 int sepol_context_set_user(sepol_handle_t *handle, sepol_context_t *con,
 			   const char *user)
 {
+	if (!con || !user)
+		return STATUS_ERR;
 	char *tmp_user = strdup(user);
 	if (!tmp_user) {
 		ERR(handle,
@@ -47,12 +49,14 @@ int sepol_context_set_user(sepol_handle_t *handle, sepol_context_t *con,
 /* Role */
 const char *sepol_context_get_role(const sepol_context_t *con)
 {
-	return con->role;
+	return con ? con->role : NULL;
 }
 
 int sepol_context_set_role(sepol_handle_t *handle, sepol_context_t *con,
 			   const char *role)
 {
+	if (!con || !role)
+		return STATUS_ERR;
 	char *tmp_role = strdup(role);
 	if (!tmp_role) {
 		ERR(handle,
@@ -69,12 +73,14 @@ int sepol_context_set_role(sepol_handle_t *handle, sepol_context_t *con,
 /* Type */
 const char *sepol_context_get_type(const sepol_context_t *con)
 {
-	return con->type;
+	return con ? con->type : NULL;
 }
 
 int sepol_context_set_type(sepol_handle_t *handle, sepol_context_t *con,
 			   const char *type)
 {
+	if (!con || !type)
+		return STATUS_ERR;
 	char *tmp_type = strdup(type);
 	if (!tmp_type) {
 		ERR(handle,
@@ -91,12 +97,14 @@ int sepol_context_set_type(sepol_handle_t *handle, sepol_context_t *con,
 /* MLS */
 const char *sepol_context_get_mls(const sepol_context_t *con)
 {
-	return con->mls;
+	return con ? con->mls : NULL;
 }
 
 int sepol_context_set_mls(sepol_handle_t *handle, sepol_context_t *con,
 			  const char *mls)
 {
+	if (!con || !mls)
+		return STATUS_ERR;
 	char *tmp_mls = strdup(mls);
 	if (!tmp_mls) {
 		ERR(handle,
@@ -113,11 +121,15 @@ int sepol_context_set_mls(sepol_handle_t *handle, sepol_context_t *con,
 /* Create */
 int sepol_context_create(sepol_handle_t *handle, sepol_context_t **con_ptr)
 {
-	sepol_context_t *con =
-		(sepol_context_t *)malloc(sizeof(sepol_context_t));
+	sepol_context_t *con;
 
+	if (!con_ptr)
+		return STATUS_ERR;
+
+	con = (sepol_context_t *)malloc(sizeof(sepol_context_t));
 	if (!con) {
 		ERR(handle, "out of memory, could not create context");
+		*con_ptr = NULL;
 		return STATUS_ERR;
 	}
 
@@ -135,21 +147,29 @@ int sepol_context_clone(sepol_handle_t *handle, const sepol_context_t *con,
 {
 	sepol_context_t *new_con = NULL;
 
+	if (!con_ptr)
+		return STATUS_ERR;
+
+	/*
+	 * Unlike other _clone() functions, a NULL source is not an error
+	 * here: sepol_{port,node,ibpkey,ibendport,iface}_set_con() rely on
+	 * this to implement "pass NULL to clear the (optional) context".
+	 */
 	if (!con) {
 		*con_ptr = NULL;
-		return 0;
+		return STATUS_SUCCESS;
 	}
 
 	if (sepol_context_create(handle, &new_con) < 0)
 		goto err;
 
-	if (!(new_con->user = strdup(con->user)))
+	if (con->user && !(new_con->user = strdup(con->user)))
 		goto omem;
 
-	if (!(new_con->role = strdup(con->role)))
+	if (con->role && !(new_con->role = strdup(con->role)))
 		goto omem;
 
-	if (!(new_con->type = strdup(con->type)))
+	if (con->type && !(new_con->type = strdup(con->type)))
 		goto omem;
 
 	if (con->mls && !(new_con->mls = strdup(con->mls)))
@@ -164,6 +184,7 @@ omem:
 err:
 	ERR(handle, "could not clone context record");
 	sepol_context_free(new_con);
+	*con_ptr = NULL;
 	return STATUS_ERR;
 }
 
@@ -186,10 +207,17 @@ int sepol_context_from_string(sepol_handle_t *handle, const char *str,
 	char *tmp = NULL, *low, *high;
 	sepol_context_t *tmp_con = NULL;
 
-	if (!strcmp(str, "<<none>>")) {
-		*con = NULL;
-		return STATUS_SUCCESS;
+	if (!con)
+		return STATUS_ERR;
+	*con = NULL;
+
+	if (!str) {
+		ERR(handle, "context string is NULL");
+		return STATUS_ERR;
 	}
+
+	if (!strcmp(str, "<<none>>"))
+		return STATUS_SUCCESS;
 
 	if (sepol_context_create(handle, &tmp_con) < 0)
 		goto err;
@@ -257,6 +285,14 @@ int sepol_context_to_string(sepol_handle_t *handle, const sepol_context_t *con,
 	int rc;
 	char *str = NULL;
 	size_t total_sz = 0, i;
+	if (!str_ptr)
+		return STATUS_ERR;
+	*str_ptr = NULL;
+	if (!con || !con->user || !con->role || !con->type) {
+		ERR(handle, "incomplete context record");
+		return STATUS_ERR;
+	}
+
 	const size_t sizes[] = {
 		strlen(con->user), /* user length */
 		strlen(con->role), /* role length */

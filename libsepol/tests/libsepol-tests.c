@@ -26,6 +26,7 @@
 #include "test-downgrade.h"
 #include "test-neverallow.h"
 #include "test-iter.h"
+#include "test-context-api.h"
 
 #include <CUnit/Basic.h>
 #include <CUnit/Console.h>
@@ -76,6 +77,7 @@ static bool do_tests(int interactive, int verbose)
 	DECLARE_SUITE(downgrade);
 	DECLARE_SUITE(neverallow);
 	DECLARE_SUITE(iter);
+	DECLARE_SUITE(context_api);
 
 	if (verbose)
 		CU_basic_set_mode(CU_BRM_VERBOSE);

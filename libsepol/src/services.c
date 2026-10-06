@@ -48,6 +48,7 @@
 #define EXPR_BUF_SIZE 1024
 #define STACK_LEN 32
 
+#include <errno.h>
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -125,6 +126,18 @@ int sepol_set_sidtab(sidtab_t *s)
 {
 	sidtab = s;
 	return 0;
+}
+
+/*
+ * Returns the sidtab currently installed via sepol_set_sidtab(), or NULL
+ * if none is active. Used internally (e.g. by sepol_sid_table_free()) to
+ * detect whether a given sidtab is the one actually in use, since
+ * sepol_set_sidtab() can be called directly and bypass any bookkeeping
+ * done by higher-level wrappers such as sepol_sid_table_set_opaque().
+ */
+sidtab_t *sepol_get_sidtab(void)
+{
+	return sidtab;
 }
 
 int sepol_set_policydb(policydb_t *p)
@@ -1304,6 +1317,26 @@ int sepol_sid_to_context(sepol_security_id_t sid,
 	}
 	rc = context_to_string(NULL, policydb, context, scontext, scontext_len);
 out:
+	return rc;
+}
+
+int sepol_sid_to_context_record(sepol_handle_t *handle, sepol_security_id_t sid,
+				sepol_context_t **record)
+{
+	context_struct_t *context;
+	int rc;
+
+	if (!record)
+		return STATUS_ERR;
+	*record = NULL;
+
+	context = sepol_sidtab_search(sidtab, sid);
+	if (!context) {
+		ERR(handle, "unrecognized SID %u", sid);
+		return STATUS_ERR;
+	}
+
+	rc = context_to_record(handle, policydb, context, record);
 	return rc;
 }
 
