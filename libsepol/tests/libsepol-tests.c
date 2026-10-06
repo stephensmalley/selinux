@@ -28,6 +28,7 @@
 #include "test-iter.h"
 #include "test-context-api.h"
 #include "test-av-rule.h"
+#include "test-records.h"
 
 #include <CUnit/Basic.h>
 #include <CUnit/Console.h>
@@ -80,6 +81,7 @@ static bool do_tests(int interactive, int verbose)
 	DECLARE_SUITE(iter);
 	DECLARE_SUITE(context_api);
 	DECLARE_SUITE(av_rule);
+	DECLARE_SUITE(records);
 
 	if (verbose)
 		CU_basic_set_mode(CU_BRM_VERBOSE);
