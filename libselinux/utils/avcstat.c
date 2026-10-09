@@ -13,6 +13,7 @@
 #include <libgen.h>
 #include <stdarg.h>
 #include <errno.h>
+#include <limits.h>
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -122,9 +123,12 @@ int main(int argc, char **argv)
 
 	if (optind < argc) {
 		char *arg = argv[optind];
-		unsigned int n = strtoul(arg, NULL, 10);
+		unsigned long n;
 
-		if (errno == ERANGE) {
+		errno = 0;
+		n = strtoul(arg, NULL, 10);
+
+		if (errno == ERANGE || n > INT_MAX) {
 			usage();
 			die("invalid interval \'%s\'", arg);
 		}
